@@ -1,0 +1,40 @@
+{
+  "name": "kyorix-athlete-id-generator",
+  "version": "1.0.0",
+  "description": "Athlete ID Card Generation System - Kyorix Sports Technology",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev",
+    "db:verify": "node scripts/verify-db.js"
+  },
+  "dependencies": {
+    "@prisma/client": "6.19.3",
+    "clsx": "2.1.1",
+    "jose": "6.2.12",
+    "lucide-react": "1.49.0",
+    "next": "16.3.8",
+    "pdf-lib": "^1.17.1",
+    "prisma": "6.19.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.8",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,345 @@
+// ==============================================================================
+// KYORIX SPORTS TECHNOLOGY - ATHLETE ID CARD GENERATION SYSTEM
+// Relational Database Schema (PostgreSQL / Prisma ORM)
+// ==============================================================================
+// Architecture Principles:
+// 1. One Centralized Database shared by Admin Portal and Athlete Portal.
+// 2. Complete isolation from Kyorix Manager website (No shared DB, auth, or APIs).
+// 3. Strict unique constraints (Prevent duplicate Kukkiwon IDs).
+// 4. Private storage referencing for athlete photos and generated ID cards.
+// 5. Full audit logging and generation history tracking.
+// ==============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum AgeDivision {
+  SENIOR
+  JUNIOR
+  CADET
+  SUB_CADET
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  REGISTRATION_ADMIN
+  CARD_OPERATOR
+  AUDITOR
+}
+
+enum ApprovalStatus {
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum IdCardStatus {
+  PENDING_GENERATION
+  GENERATED
+  EXPIRED
+  REVOKED
+}
+
+enum BatchStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  PARTIAL_FAILURE
+  FAILED
+}
+
+enum GenerationTrigger {
+  ADMIN_INDIVIDUAL
+  ADMIN_BULK
+  SYSTEM_REGEN
+}
+
+enum StorageProvider {
+  LOCAL_PRIVATE
+  SUPABASE_STORAGE
+  S3_COMPATIBLE
+}
+
+enum ActorType {
+  ADMIN
+  ATHLETE_PORTAL
+  SYSTEM
+}
+
+// ------------------------------------------------------------------------------
+// ENTITY MODELS
+// ------------------------------------------------------------------------------
+
+/// System administrator users who review registrations and generate ID cards
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         AdminRole @default(CARD_OPERATOR)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relational mappings
+  approvedRegistrations Registration[]        @relation("ApprovedByAdmin")
+  generatedCards        IdCardRecord[]        @relation("GeneratedByAdmin")
+  generationBatches     CardGenerationBatch[] @relation("BatchInitiatedByAdmin")
+  auditLogs             AuditLog[]
+
+  @@map("admin_users")
+}
+
+/// Martial arts academy / dojang affiliation
+model Academy {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  city          String
+  state         String
+  contactPerson String?
+  contactPhone  String?
+  contactEmail  String?
+  isVerified    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relational mappings
+  athletes      Athlete[]
+  registrations Registration[]
+
+  @@index([city, state])
+  @@map("academies")
+}
+
+/// Core Athlete Record
+/// Maintains consistent athlete identity across both portals
+model Athlete {
+  id           String    @id @default(cuid())
+  kukkiwonId   String    @unique // STRICT REQUIREMENT: Prevent duplicate Kukkiwon IDs
+  fullName     String
+  gender       Gender
+  dateOfBirth  DateTime?
+  contactPhone String?
+  contactEmail String?
+  danOrPoom    String? // e.g. "1st Dan", "2nd Poom", "1st Geup"
+  academyId    String
+  academy      Academy   @relation(fields: [academyId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relational mappings
+  photographs   AthletePhotograph[]
+  registrations Registration[]
+  idCards       IdCardRecord[]
+
+  @@index([kukkiwonId])
+  @@index([academyId])
+  @@map("athletes")
+}
+
+/// Private Athlete Photograph Store
+/// Files are stored in secure private storage, never exposed publicly
+model AthletePhotograph {
+  id              String          @id @default(cuid())
+  athleteId       String
+  athlete         Athlete         @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  storageProvider StorageProvider @default(LOCAL_PRIVATE)
+  storageKey      String          @unique // Secure unique storage key (e.g. photos/uuid.jpg)
+  fileName        String // Sanitized original filename
+  mimeType        String // image/jpeg, image/png, image/webp
+  fileSizeBytes   Int
+  checksumSha256  String // Cryptographic SHA-256 integrity digest
+  isCurrent       Boolean         @default(true)
+  uploadedAt      DateTime        @default(now())
+
+  // Relational mappings
+  registrations Registration[]
+
+  @@index([athleteId])
+  @@map("athlete_photographs")
+}
+
+/// Weight Category classification
+model WeightCategory {
+  id          String      @id @default(cuid())
+  code        String      @unique // e.g. "SR_M_U58", "JR_F_U49"
+  division    AgeDivision
+  gender      Gender
+  name        String // e.g. "Senior Men Under 58kg"
+  minWeightKg Float?
+  maxWeightKg Float
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relational mappings
+  registrations Registration[]
+
+  @@index([division, gender])
+  @@map("weight_categories")
+}
+
+/// Registration Submission & Approval Lifecycle
+/// Bridges the athlete registration with admin verification and card issuance
+model Registration {
+  id                 String         @id @default(cuid())
+  registrationNumber String         @unique // e.g. "REG-2026-0001"
+  athleteId          String
+  athlete            Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  academyId          String
+  academy            Academy        @relation(fields: [academyId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  photographId       String
+  photograph         AthletePhotograph @relation(fields: [photographId], references: [id], onDelete: Restrict)
+  weightCategoryId   String
+  weightCategory     WeightCategory @relation(fields: [weightCategoryId], references: [id], onUpdate: Cascade, onDelete: Restrict)
+  
+  // Approval state
+  approvalStatus     ApprovalStatus @default(PENDING_REVIEW)
+  approvedByAdminId  String?
+  approvedByAdmin    AdminUser?     @relation("ApprovedByAdmin", fields: [approvedByAdminId], references: [id], onDelete: SetNull)
+  approvalDate       DateTime?
+  rejectionReason    String?
+
+  // Athlete self-service access token (for secure lookup & card download without password)
+  athleteAccessToken String?        @unique
+  notes              String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  // Relational mappings
+  idCard    IdCardRecord?
+  auditLogs AuditLog[]
+
+  @@index([athleteId])
+  @@index([approvalStatus])
+  @@index([academyId])
+  @@map("registrations")
+}
+
+/// ID Card Record
+/// Represents generated physical/digital credential
+model IdCardRecord {
+  id                     String       @id @default(cuid())
+  cardNumber             String       @unique // e.g. "KYX-ID-2026-00001"
+  registrationId         String       @unique
+  registration           Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  athleteId              String
+  athlete                Athlete      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  status                 IdCardStatus @default(PENDING_GENERATION)
+  cardTemplateVersion    String       @default("v1.0")
+  generatedFileKey       String?      // Private storage key for generated PDF
+  generatedFileSizeBytes Int?
+  checksumSha256         String?      // Integrity verification of generated PDF
+  generatedAt            DateTime?
+  generatedByAdminId     String?
+  generatedByAdmin       AdminUser?   @relation("GeneratedByAdmin", fields: [generatedByAdminId], references: [id], onDelete: SetNull)
+  
+  // Bulk batch association
+  batchId                String?
+  batch                  CardGenerationBatch? @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  
+  // Download metrics & access controls
+  downloadCountAthlete   Int          @default(0)
+  downloadCountAdmin     Int          @default(0)
+  lastDownloadedAt       DateTime?
+  expiresAt              DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  // Relational mappings
+  generationHistory GenerationHistory[]
+
+  @@index([status])
+  @@index([athleteId])
+  @@map("id_card_records")
+}
+
+/// Bulk Card Generation Batch
+/// Manages high-volume card generation workflows for tournaments and academies
+model CardGenerationBatch {
+  id                 String       @id @default(cuid())
+  batchNumber        String       @unique // e.g. "BATCH-2026-0001"
+  initiatedByAdminId String
+  initiatedByAdmin   AdminUser    @relation("BatchInitiatedByAdmin", fields: [initiatedByAdminId], references: [id], onDelete: Restrict)
+  status             BatchStatus  @default(QUEUED)
+  totalCards         Int
+  successfulCards    Int          @default(0)
+  failedCards        Int          @default(0)
+  archiveFileKey     String?      // Private ZIP storage key containing all batch cards
+  errorSummary       String?
+  startedAt          DateTime     @default(now())
+  completedAt        DateTime?
+
+  // Relational mappings
+  cards             IdCardRecord[]
+  generationHistory GenerationHistory[]
+
+  @@index([status])
+  @@map("card_generation_batches")
+}
+
+/// Generation History Audit Trail
+/// Immutable record of card generation attempts, render timings, and errors
+model GenerationHistory {
+  id                 String            @id @default(cuid())
+  idCardRecordId     String?
+  idCardRecord       IdCardRecord?     @relation(fields: [idCardRecordId], references: [id], onDelete: Cascade)
+  batchId            String?
+  batch              CardGenerationBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  triggerType        GenerationTrigger @default(ADMIN_INDIVIDUAL)
+  triggeredByAdminId String?
+  success            Boolean
+  errorMessage       String?
+  renderTimeMs       Int?
+  fileSizeBytes      Int?
+  createdAt          DateTime          @default(now())
+
+  @@index([idCardRecordId])
+  @@index([batchId])
+  @@map("generation_history")
+}
+
+/// Audit Log
+/// Immutable security audit logging for administrative actions and athlete portal requests
+model AuditLog {
+  id             String        @id @default(cuid())
+  actorType      ActorType     @default(SYSTEM)
+  actorId        String?       // Identifier of the actor
+  adminUserId    String?
+  adminUser      AdminUser?    @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  registrationId String?
+  registration   Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  action         String        // e.g. "REGISTRATION_SUBMITTED", "CARD_GENERATED", "CARD_DOWNLOADED"
+  entityType     String        // "Athlete", "Registration", "IdCardRecord", etc.
+  entityId       String?
+  details        String?       // JSON string of context/parameters
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime      @default(now())
+
+  @@index([actorType, actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
