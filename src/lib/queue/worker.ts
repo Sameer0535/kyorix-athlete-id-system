@@ -46,25 +46,23 @@ export async function enqueueBulkJob(params: EnqueueBatchJobParams) {
 }
 
 /**
- * Process a background job with atomic locking, progress heartbeats, and error handling
+ * Atomically claim the next available queued job.
+ * Guaranteed: Only one worker instance can claim a given job due to atomic single-statement update.
  */
-export async function processJob(jobId: string) {
-  const workerId = `worker-${process.pid}-${Date.now()}`;
-
-  // 1. Acquire atomic lock on the job
-  // Only transitions if status is currently QUEUED
-  const job = await prisma.backgroundJob.findFirst({
-    where: { id: jobId, status: "QUEUED" },
+export async function claimNextQueuedJob(workerId: string): Promise<string | null> {
+  const candidate = await prisma.backgroundJob.findFirst({
+    where: { status: "QUEUED" },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
   });
 
-  if (!job) {
-    // Already claimed or cancelled
-    return;
-  }
+  if (!candidate) return null;
 
-  // Atomic update to mark PROCESSING
-  await prisma.backgroundJob.update({
-    where: { id: jobId },
+  const result = await prisma.backgroundJob.updateMany({
+    where: {
+      id: candidate.id,
+      status: "QUEUED",
+    },
     data: {
       status: "PROCESSING",
       lockedBy: workerId,
@@ -74,6 +72,50 @@ export async function processJob(jobId: string) {
       attempts: { increment: 1 },
     },
   });
+
+  return result.count > 0 ? candidate.id : null;
+}
+
+/**
+ * Process a background job with atomic locking, progress heartbeats, and error handling
+ */
+export async function processJob(jobId: string, customWorkerId?: string) {
+  const workerId = customWorkerId || `worker-${process.pid}-${Date.now()}`;
+
+  // 1. Acquire atomic single-statement lock on the job.
+  // In PostgreSQL, updateMany with status: "QUEUED" guarantees that only ONE worker can transition this row.
+  const claimResult = await prisma.backgroundJob.updateMany({
+    where: {
+      id: jobId,
+      status: "QUEUED",
+    },
+    data: {
+      status: "PROCESSING",
+      lockedBy: workerId,
+      lockedAt: new Date(),
+      heartbeatAt: new Date(),
+      startedAt: new Date(),
+      attempts: { increment: 1 },
+    },
+  });
+
+  // If claimResult.count === 0, another concurrent worker already claimed or processed this job
+  if (claimResult.count === 0) {
+    const existing = await prisma.backgroundJob.findUnique({
+      where: { id: jobId },
+      select: { status: true, lockedBy: true },
+    });
+    // If already locked by this exact customWorkerId, continue
+    if (existing?.lockedBy !== workerId || existing?.status !== "PROCESSING") {
+      return null;
+    }
+  }
+
+  const job = await prisma.backgroundJob.findUnique({
+    where: { id: jobId },
+  });
+
+  if (!job) return null;
 
   const payload = JSON.parse(job.payload);
   const { batchId, registrationIds, adminId } = payload;
@@ -85,13 +127,23 @@ export async function processJob(jobId: string) {
   });
 
   try {
-    // Progress callback for live database updates
+    // Progress callback for live database updates with intelligent throttling
+    let lastProgressUpdateTime = 0;
     const onProgress = async (prog: {
       processedCount: number;
       totalCount: number;
       successfulCount: number;
       failedCount: number;
     }) => {
+      const now = Date.now();
+      const isFinal = prog.processedCount === prog.totalCount;
+
+      // Throttle DB updates to once every 1200ms unless it is the final progress event
+      if (!isFinal && now - lastProgressUpdateTime < 1200) {
+        return;
+      }
+      lastProgressUpdateTime = now;
+
       const percentage = prog.totalCount > 0 ? Math.round((prog.processedCount / prog.totalCount) * 100) : 0;
 
       await prisma.backgroundJob.update({

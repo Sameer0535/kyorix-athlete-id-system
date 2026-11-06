@@ -84,10 +84,17 @@ export function verifyMagicBytes(buffer: Buffer): { valid: boolean; detectedMime
 export async function savePrivateFile(options: SaveFileOptions): Promise<StorageFileResult> {
   const { buffer, originalFilename, subfolder, allowedMimeTypes, maxSizeBytes } = options;
 
-  // 1. File size check
-  const maxLimit = maxSizeBytes || parseInt(process.env.MAX_PHOTO_SIZE_BYTES || "5242880", 10);
+  // 1. File size check (configurable per subfolder)
+  const defaultMax =
+    subfolder === "batches"
+      ? 500 * 1024 * 1024 // 500 MB for bulk combined PDFs and ZIP packages
+      : subfolder === "cards"
+      ? 20 * 1024 * 1024 // 20 MB for individual card PDFs
+      : parseInt(process.env.MAX_PHOTO_SIZE_BYTES || "5242880", 10); // 5 MB for photographs
+
+  const maxLimit = maxSizeBytes || defaultMax;
   if (buffer.length > maxLimit) {
-    throw new Error(`File size ${buffer.length} bytes exceeds maximum allowed limit of ${maxLimit} bytes.`);
+    throw new Error(`File size ${buffer.length} bytes exceeds maximum allowed limit of ${maxLimit} bytes for '${subfolder}'.`);
   }
 
   // 2. Magic byte / MIME validation

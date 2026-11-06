@@ -4,19 +4,26 @@ import { logAuditEvent, validateKukkiwonId } from "@/lib/security";
 import { getPrivateFile, savePrivateFile } from "@/lib/storage";
 import { generateIndividualCardPdf, AthleteCardData } from "@/lib/pdf-generator";
 import { apiError } from "@/lib/api-response";
-import { verifyAdminSessionToken, verifyAthleteAccessToken, AthleteTokenPayload } from "@/lib/auth";
+import {
+  verifyAdminSessionToken,
+  verifyAthleteAccessToken,
+  verifyAndConsumeDownloadGrant,
+  verifyAthleteAccessCode,
+  AthleteTokenPayload,
+} from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const kukkiwonIdParam = searchParams.get("kukkiwonId");
     const registrationIdParam = searchParams.get("registrationId");
+    const grantParam = searchParams.get("grant")?.trim();
+    const tokenParam = searchParams.get("token")?.trim();
     const previewMode = searchParams.get("preview") === "true";
 
     // Extract authorization credentials from header, cookie, or query parameter
     let authHeader = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "")?.trim();
-    const tokenParam = searchParams.get("token")?.trim();
-    const candidateToken = authHeader || tokenParam || "";
+    const candidateToken = authHeader || grantParam || tokenParam || "";
     const adminCookie = req.cookies.get("admin_session")?.value;
 
     let isAdmin = false;
@@ -44,17 +51,21 @@ export async function GET(req: NextRequest) {
     if (!isAdmin) {
       if (!candidateToken) {
         return apiError(
-          "Authentication required. Official athlete credentials cannot be downloaded using Kukkiwon ID or registration ID alone. A cryptographically verified athlete access token or active administrator session is required.",
+          "Authentication required. Official athlete credentials cannot be downloaded using Kukkiwon ID alone. A cryptographically verified athlete access token, single-use download grant, or active administrator session is required.",
           "AUTHENTICATION_REQUIRED",
           401
         );
       }
 
-      // Verify if candidateToken is a signed JWT athlete token
-      athleteJwtPayload = await verifyAthleteAccessToken(candidateToken);
-      if (!athleteJwtPayload) {
-        // If not a signed JWT, could be the direct registration access token string
-        candidateSecretToken = candidateToken;
+      // If token looks like a single-use grant token (starts with dgrant_)
+      if (candidateToken.startsWith("dgrant_")) {
+        // Handled via verifyAndConsumeDownloadGrant below against the matched registration
+      } else {
+        // Verify if candidateToken is a signed JWT athlete token
+        athleteJwtPayload = await verifyAthleteAccessToken(candidateToken);
+        if (!athleteJwtPayload) {
+          candidateSecretToken = candidateToken;
+        }
       }
     }
 
@@ -110,20 +121,45 @@ export async function GET(req: NextRequest) {
       return apiError("No registration record found.", "NOT_FOUND", 404);
     }
 
-    // 3. Security Remediation: Enforce strict athlete token ownership & cross-athlete isolation
+    // 3. Security Remediation: Enforce single-use grant validation, token ownership & cross-athlete isolation
     if (!isAdmin) {
       let authorizedForRecord = false;
 
-      if (athleteJwtPayload) {
-        // Ensure token matches this specific registration and athlete
+      // A. Check single-use download grant (consumes token atomically, rejects replay)
+      if (candidateToken.startsWith("dgrant_") || grantParam) {
+        const tokenToVerify = grantParam || candidateToken;
+        const grantCheck = await verifyAndConsumeDownloadGrant(
+          tokenToVerify,
+          registration.id,
+          req.headers.get("x-forwarded-for") || undefined
+        );
+
+        if (grantCheck.valid) {
+          authorizedForRecord = true;
+        } else {
+          return apiError(
+            `Download grant verification failed: ${grantCheck.reason}. Single-use tokens expire in 5 minutes and cannot be reused or replayed.`,
+            "GRANT_REJECTED",
+            403
+          );
+        }
+      }
+      // B. Check cryptographically signed JWT
+      else if (athleteJwtPayload) {
         if (
           athleteJwtPayload.registrationId === registration.id &&
           athleteJwtPayload.athleteId === registration.athleteId
         ) {
           authorizedForRecord = true;
         }
-      } else if (candidateSecretToken && candidateSecretToken === registration.athleteAccessToken) {
-        authorizedForRecord = true;
+      }
+      // C. Check secret access code against cryptographic HMAC hash
+      else if (candidateSecretToken) {
+        if (registration.athleteAccessTokenHash) {
+          authorizedForRecord = verifyAthleteAccessCode(candidateSecretToken, registration.athleteAccessTokenHash);
+        } else if (registration.athleteAccessToken) {
+          authorizedForRecord = candidateSecretToken === registration.athleteAccessToken;
+        }
       }
 
       if (!authorizedForRecord) {
@@ -268,6 +304,7 @@ export async function GET(req: NextRequest) {
         kukkiwonId: registration.athlete.kukkiwonId,
         fileSizeBytes: pdfBuffer.length,
         previewMode,
+        grantUsed: !!grantParam || candidateToken.startsWith("dgrant_"),
       },
       ipAddress: req.headers.get("x-forwarded-for") || undefined,
       userAgent: req.headers.get("user-agent") || undefined,
@@ -283,7 +320,10 @@ export async function GET(req: NextRequest) {
         "Content-Type": "application/pdf",
         "Content-Disposition": disposition,
         "Content-Length": pdfBuffer.length.toString(),
-        "Cache-Control": "private, no-cache, no-store",
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+        "Referrer-Policy": "no-referrer",
         "X-Content-Type-Options": "nosniff",
       },
     });

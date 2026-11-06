@@ -7,6 +7,7 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
+    "worker": "node scripts/worker.js",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",

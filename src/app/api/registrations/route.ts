@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateKukkiwonId, logAuditEvent } from "@/lib/security";
 import { savePrivateFile } from "@/lib/storage";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { hashAthleteAccessCode } from "@/lib/auth";
 import { randomBytes } from "crypto";
 
 export async function POST(req: NextRequest) {
@@ -111,8 +112,9 @@ export async function POST(req: NextRequest) {
       const regCount = await tx.registration.count();
       const registrationNumber = `REG-${new Date().getFullYear()}-${String(regCount + 1).padStart(4, "0")}`;
       const athleteAccessToken = randomBytes(24).toString("hex");
+      const athleteAccessTokenHash = hashAthleteAccessCode(athleteAccessToken);
 
-      // Create Registration
+      // Create Registration with hashed access token
       const registration = await tx.registration.create({
         data: {
           registrationNumber,
@@ -121,7 +123,7 @@ export async function POST(req: NextRequest) {
           photographId: photograph.id,
           weightCategoryId: weightCategory.id,
           approvalStatus: "PENDING_REVIEW",
-          athleteAccessToken,
+          athleteAccessTokenHash,
         },
       });
 

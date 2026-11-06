@@ -137,14 +137,37 @@ function CardDownloadContent() {
     }
   }, [initialId, initialToken]);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!result?.athlete?.kukkiwonId) return;
-    if (!downloadToken) {
+    if (!downloadToken && !accessToken) {
       setError("Verified Access Token is required to download this official credential.");
       return;
     }
-    const url = `/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&token=${encodeURIComponent(downloadToken)}`;
-    window.open(url, "_blank");
+    try {
+      // Request a short-lived single-use grant token to prevent URL token leakage and replay attacks
+      const res = await fetch("/api/athletes/verify-access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: result.athlete.kukkiwonId, accessToken }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success && json.data.singleUseGrantToken) {
+        window.open(
+          `/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&grant=${encodeURIComponent(json.data.singleUseGrantToken)}`,
+          "_blank"
+        );
+      } else {
+        window.open(
+          `/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&token=${encodeURIComponent(downloadToken)}`,
+          "_blank"
+        );
+      }
+    } catch {
+      window.open(
+        `/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&token=${encodeURIComponent(downloadToken)}`,
+        "_blank"
+      );
+    }
   };
 
   return (

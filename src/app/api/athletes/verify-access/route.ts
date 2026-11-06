@@ -1,20 +1,28 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateKukkiwonId, checkRateLimit, logAuditEvent } from "@/lib/security";
-import { createAthleteAccessToken } from "@/lib/auth";
+import {
+  createAthleteAccessToken,
+  createSingleUseDownloadGrant,
+  verifyAthleteAccessCode,
+} from "@/lib/auth";
 import { apiSuccess, apiError } from "@/lib/api-response";
 
 /**
  * POST /api/athletes/verify-access
  * Authenticate an athlete using their Kukkiwon ID / Registration Number AND their secret Access Token.
- * Returns a cryptographically signed JWT download token for secure ID card preview and download.
+ * Returns a cryptographically signed JWT download token and a single-use download grant.
  */
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get("x-forwarded-for") || "unknown";
-    const rateCheck = checkRateLimit(`athlete-verify:${ip}`, 20, 60000);
+    const rateCheck = checkRateLimit(`athlete-verify:${ip}`, 15, 60000);
     if (!rateCheck.allowed) {
-      return apiError("Too many verification attempts. Please wait a minute.", "RATE_LIMIT_EXCEEDED", 429);
+      return apiError(
+        "Too many verification attempts. Please wait a minute before trying again.",
+        "RATE_LIMIT_EXCEEDED",
+        429
+      );
     }
 
     const body = await req.json().catch(() => ({}));
@@ -31,7 +39,7 @@ export async function POST(req: NextRequest) {
     const trimmedId = String(identifier).trim().toUpperCase();
     const trimmedToken = String(accessToken).trim();
 
-    // Find registration matching the identifier and verify secret token
+    // Find registration matching the identifier
     const registration = await prisma.registration.findFirst({
       where: {
         OR: [
@@ -76,8 +84,15 @@ export async function POST(req: NextRequest) {
       return apiError("No registration found matching the provided identifier.", "NOT_FOUND", 404);
     }
 
-    // Verify secret access token (constant-time check or equality)
-    if (registration.athleteAccessToken !== trimmedToken) {
+    // Verify secret access token against cryptographic HMAC-SHA256 hash
+    let isValidCode = false;
+    if (registration.athleteAccessTokenHash) {
+      isValidCode = verifyAthleteAccessCode(trimmedToken, registration.athleteAccessTokenHash);
+    } else if (registration.athleteAccessToken) {
+      isValidCode = registration.athleteAccessToken === trimmedToken;
+    }
+
+    if (!isValidCode) {
       await logAuditEvent({
         actorType: "ATHLETE_PORTAL",
         action: "ATHLETE_VERIFICATION_FAILED_INVALID_TOKEN",
@@ -91,10 +106,18 @@ export async function POST(req: NextRequest) {
         userAgent: req.headers.get("user-agent") || undefined,
       });
 
-      return apiError("Invalid Access Token. Please verify the code given upon registration.", "INVALID_TOKEN", 401);
+      return apiError("Invalid Access Token. Please verify the code received upon registration.", "INVALID_TOKEN", 401);
     }
 
-    // Create cryptographically signed JWT download token (valid for 1 hour)
+    // 1. Create short-lived single-use download grant (valid 5 minutes, single consumption)
+    const singleUseGrantToken = await createSingleUseDownloadGrant({
+      registrationId: registration.id,
+      athleteId: registration.athleteId,
+      ipAddress: ip,
+      maxAgeMinutes: 5,
+    });
+
+    // 2. Create signed JWT token
     const downloadToken = await createAthleteAccessToken({
       registrationId: registration.id,
       athleteId: registration.athleteId,
@@ -104,6 +127,7 @@ export async function POST(req: NextRequest) {
     return apiSuccess({
       verified: true,
       downloadToken,
+      singleUseGrantToken,
       registration: {
         id: registration.id,
         registrationNumber: registration.registrationNumber,
@@ -120,4 +144,3 @@ export async function POST(req: NextRequest) {
     return apiError(message, "VERIFICATION_ERROR", 500);
   }
 }
-

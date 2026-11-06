@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
-import { scryptSync, randomBytes, timingSafeEqual } from "crypto";
+import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
+import { prisma } from "./prisma.ts";
 
 // Ensure secrets are available
 const JWT_SECRET_STRING =
@@ -104,4 +105,99 @@ export async function verifyAthleteAccessToken(token: string): Promise<AthleteTo
     return null;
   }
 }
+
+/**
+ * Compute HMAC-SHA256 hash of an athlete's plain secret access code.
+ * Raw codes are never persisted in the database.
+ */
+export function hashAthleteAccessCode(plainCode: string): string {
+  return createHmac("sha256", ATHLETE_ACCESS_SECRET_STRING)
+    .update(plainCode.trim())
+    .digest("hex");
+}
+
+/**
+ * Verify a candidate access code against the stored cryptographic hash using constant-time comparison
+ */
+export function verifyAthleteAccessCode(candidateCode: string, storedHash: string): boolean {
+  try {
+    const computedHash = hashAthleteAccessCode(candidateCode);
+    const a = Buffer.from(computedHash, "hex");
+    const b = Buffer.from(storedHash, "hex");
+    if (a.length !== b.length) return false;
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Generate a short-lived (5 min), single-use cryptographic download grant token
+ */
+export async function createSingleUseDownloadGrant(params: {
+  registrationId: string;
+  athleteId: string;
+  ipAddress?: string;
+  maxAgeMinutes?: number;
+}): Promise<string> {
+  const { registrationId, athleteId, ipAddress, maxAgeMinutes = 5 } = params;
+  const grantToken = `dgrant_${randomBytes(24).toString("hex")}`;
+  const expiresAt = new Date(Date.now() + maxAgeMinutes * 60 * 1000);
+
+  await prisma.downloadGrant.create({
+    data: {
+      grantToken,
+      registrationId,
+      athleteId,
+      expiresAt,
+      isUsed: false,
+      usedByIp: ipAddress,
+    },
+  });
+
+  return grantToken;
+}
+
+/**
+ * Atomically verify and consume a single-use download grant.
+ * Protects against URL token leakage, replay attacks, and unauthorized sharing.
+ */
+export async function verifyAndConsumeDownloadGrant(
+  grantToken: string,
+  registrationId: string,
+  ipAddress?: string
+): Promise<{ valid: boolean; reason?: string }> {
+  const grant = await prisma.downloadGrant.findUnique({
+    where: { grantToken },
+  });
+
+  if (!grant) {
+    return { valid: false, reason: "INVALID_GRANT_TOKEN" };
+  }
+
+  if (grant.registrationId !== registrationId) {
+    return { valid: false, reason: "GRANT_REGISTRATION_MISMATCH" };
+  }
+
+  if (grant.isUsed) {
+    return { valid: false, reason: "GRANT_ALREADY_CONSUMED_REPLAY_DETECTED" };
+  }
+
+  if (new Date() > grant.expiresAt) {
+    return { valid: false, reason: "GRANT_TOKEN_EXPIRED" };
+  }
+
+  // Atomically consume the grant
+  await prisma.downloadGrant.update({
+    where: { id: grant.id },
+    data: {
+      isUsed: true,
+      usedAt: new Date(),
+      usedByIp: ipAddress || grant.usedByIp,
+    },
+  });
+
+  return { valid: true };
+}
+
 

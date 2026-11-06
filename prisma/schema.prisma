@@ -166,6 +166,7 @@ model Athlete {
   photographs   AthletePhotograph[]
   registrations Registration[]
   idCards       IdCardRecord[]
+  downloadGrants DownloadGrant[]
 
   @@index([kukkiwonId])
   @@index([academyId])
@@ -235,15 +236,17 @@ model Registration {
   approvalDate       DateTime?
   rejectionReason    String?
 
-  // Athlete self-service access token (for secure lookup & card download without password)
-  athleteAccessToken String?        @unique
-  notes              String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  // Athlete self-service access token (hashed for security, plaintext never exposed from DB)
+  athleteAccessToken     String?        @unique
+  athleteAccessTokenHash String?        @unique
+  notes                  String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   // Relational mappings
-  idCard    IdCardRecord?
-  auditLogs AuditLog[]
+  idCard         IdCardRecord?
+  downloadGrants DownloadGrant[]
+  auditLogs      AuditLog[]
 
   @@index([athleteId])
   @@index([approvalStatus])
@@ -394,5 +397,26 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// Cryptographically verified single-use short-lived download grants
+/// Enforces single-use expiry to prevent token leakage via referrer/logs
+model DownloadGrant {
+  id             String       @id @default(cuid())
+  grantToken     String       @unique // Unique cryptographic single-use token or JTI
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  athleteId      String
+  athlete        Athlete      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime
+  isUsed         Boolean      @default(false)
+  usedAt         DateTime?
+  usedByIp       String?
+  createdAt      DateTime     @default(now())
+
+  @@index([grantToken])
+  @@index([registrationId])
+  @@index([expiresAt])
+  @@map("download_grants")
 }
 

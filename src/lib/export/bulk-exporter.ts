@@ -1,5 +1,6 @@
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
+import crypto from "crypto";
 import { prisma } from "../prisma.ts";
 import { savePrivateFile, getPrivateFile } from "../storage.ts";
 import { drawAthleteCard, type AthleteCardData, CARD_WIDTH_PT, CARD_HEIGHT_PT } from "../pdf-generator.ts";
@@ -34,6 +35,15 @@ export interface BulkExportResult {
   zipStorageKey?: string;
   zipFileSizeBytes?: number;
   failedRecords: FailedRecordDetail[];
+}
+
+export function sanitizeFolderName(name: string): string {
+  const sanitized = (name || "General")
+    .replace(/[/\\]/g, "_") // replace path separators
+    .replace(/[?%*:|"<>]/g, "") // remove illegal filesystem chars
+    .replace(/\.+$/, "") // strip trailing dots
+    .trim();
+  return sanitized.length > 0 ? sanitized : "General";
 }
 
 /**
@@ -87,6 +97,9 @@ export async function executeBulkExport(
   const zip = new JSZip();
   const usedZipFileNames = new Set<string>();
 
+  // Fetch initial card counter once to avoid N sequential database count queries
+  let currentCardIndex = await prisma.idCardRecord.count();
+
   // Process registrations sequentially or in micro-batches
   for (let i = 0; i < registrations.length; i++) {
     // Check if job was cancelled
@@ -107,8 +120,9 @@ export async function executeBulkExport(
       // Determine Card Number
       let cardNumber = reg.idCard?.cardNumber;
       if (!cardNumber) {
-        const cardCount = await prisma.idCardRecord.count();
-        cardNumber = `KYX-ID-${new Date().getFullYear()}-${String(cardCount + 1).padStart(5, "0")}`;
+        currentCardIndex++;
+        const batchHash = crypto.createHash("md5").update(batch.id).digest("hex").slice(0, 4).toUpperCase();
+        cardNumber = `KYX-ID-${new Date().getFullYear()}-${batchHash}-${String(currentCardIndex).padStart(5, "0")}`;
       }
 
       const cardData: AthleteCardData = {
@@ -142,40 +156,52 @@ export async function executeBulkExport(
         allowedMimeTypes: ["application/pdf"],
       });
 
-      // 3. Upsert IdCardRecord in PostgreSQL
-      await prisma.idCardRecord.upsert({
-        where: { registrationId: reg.id },
-        create: {
-          cardNumber,
-          registrationId: reg.id,
-          athleteId: athlete.id,
-          batchId: batch.id,
-          status: "GENERATED",
-          generatedFileKey: storageResult.storageKey,
-          generatedFileSizeBytes: storageResult.fileSizeBytes,
-          checksumSha256: storageResult.checksumSha256,
-          generatedAt: new Date(),
-          cardTemplateVersion: "v1.0",
-        },
-        update: {
-          cardNumber,
-          batchId: batch.id,
-          status: "GENERATED",
-          generatedFileKey: storageResult.storageKey,
-          generatedFileSizeBytes: storageResult.fileSizeBytes,
-          checksumSha256: storageResult.checksumSha256,
-          generatedAt: new Date(),
-        },
-      });
+      // 3. Upsert IdCardRecord in PostgreSQL with automatic retry on transient pooler reset
+      let upsertAttempts = 0;
+      while (upsertAttempts < 3) {
+        try {
+          await prisma.idCardRecord.upsert({
+            where: { registrationId: reg.id },
+            create: {
+              cardNumber,
+              registrationId: reg.id,
+              athleteId: athlete.id,
+              batchId: batch.id,
+              status: "GENERATED",
+              generatedFileKey: storageResult.storageKey,
+              generatedFileSizeBytes: storageResult.fileSizeBytes,
+              checksumSha256: storageResult.checksumSha256,
+              generatedAt: new Date(),
+              cardTemplateVersion: "v1.0",
+            },
+            update: {
+              cardNumber,
+              batchId: batch.id,
+              status: "GENERATED",
+              generatedFileKey: storageResult.storageKey,
+              generatedFileSizeBytes: storageResult.fileSizeBytes,
+              checksumSha256: storageResult.checksumSha256,
+              generatedAt: new Date(),
+            },
+          });
+          break;
+        } catch (dbErr: any) {
+          if (dbErr?.code === "P2002") {
+            currentCardIndex++;
+            cardNumber = `KYX-ID-${new Date().getFullYear()}-${crypto.randomBytes(3).toString("hex").toUpperCase()}-${String(currentCardIndex).padStart(5, "0")}`;
+          }
+          upsertAttempts++;
+          if (upsertAttempts >= 3) throw dbErr;
+          await new Promise((resolve) => setTimeout(resolve, upsertAttempts * 250));
+        }
+      }
 
       // 4. Add page to combined multi-page document
       const combinedPage = combinedPdfDoc.addPage([CARD_WIDTH_PT, CARD_HEIGHT_PT]);
       await drawAthleteCard(combinedPdfDoc, combinedPage, cardData);
 
       // 5. Add individual PDF to ZIP archive (organized by sanitized academy name)
-      const sanitizedAcademy = (academy.name || "General")
-        .replace(/[/\\?%*:|"<>]/g, "_")
-        .trim();
+      const sanitizedAcademy = sanitizeFolderName(academy.name);
       let zipFileName = `${sanitizedAcademy}/KYX-ID-${athlete.kukkiwonId}.pdf`;
       let counter = 1;
       while (usedZipFileNames.has(zipFileName)) {
@@ -225,6 +251,7 @@ export async function executeBulkExport(
       originalFilename: `${batch.batchNumber}-combined.pdf`,
       subfolder: "batches",
       allowedMimeTypes: ["application/pdf"],
+      maxSizeBytes: 500 * 1024 * 1024,
     });
     pdfStorageKey = combinedSave.storageKey;
     pdfFileSizeBytes = combinedSave.fileSizeBytes;
@@ -240,6 +267,7 @@ export async function executeBulkExport(
       originalFilename: `${batch.batchNumber}-archive.zip`,
       subfolder: "batches",
       allowedMimeTypes: ["application/zip", "application/x-zip-compressed"],
+      maxSizeBytes: 500 * 1024 * 1024,
     });
     zipStorageKey = zipSave.storageKey;
     zipFileSizeBytes = zipSave.fileSizeBytes;
