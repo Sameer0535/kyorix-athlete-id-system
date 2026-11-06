@@ -433,9 +433,9 @@ export default function AthleteStatusPage() {
             <Image
               src="/images/kyorix-logo.png"
               alt="Kyorix Sport Technology"
-              width={140}
-              height={45}
-              className="h-8 w-auto object-contain"
+              width={240}
+              height={70}
+              className="h-12 sm:h-14 w-auto object-contain"
               priority
             />
           </Link>

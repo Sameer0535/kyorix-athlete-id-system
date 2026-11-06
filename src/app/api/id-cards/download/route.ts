@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
         athlete: {
           include: { academy: true },
         },
+        academy: true,
         weightCategory: true,
         photograph: true,
         idCard: true,
@@ -231,12 +232,13 @@ export async function GET(req: NextRequest) {
         fullName: registration.athlete.fullName,
         gender: registration.athlete.gender,
         danOrPoom: registration.athlete.danOrPoom,
-        academyName: registration.athlete.academy.name,
-        academyCity: registration.athlete.academy.city,
+        academyName: registration.academy?.name || registration.athlete.academy.name,
+        academyCity: registration.academy?.city || registration.athlete.academy.city,
         weightCategoryName: registration.weightCategory.name,
         division: registration.weightCategory.division,
         photoStorageKey: registration.photograph.storageKey,
         photoMimeType: registration.photograph.mimeType,
+        cardRole: registration.cardRole || "PARTICIPANT",
         issueDate: new Date(),
       };
 

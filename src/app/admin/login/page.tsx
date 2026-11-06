@@ -52,9 +52,9 @@ export default function AdminLoginPage() {
           <Image
             src="/images/kyorix-logo.png"
             alt="Kyorix Logo"
-            width={100}
-            height={30}
-            className="h-7 w-auto object-contain"
+            width={240}
+            height={70}
+            className="h-11 sm:h-12 w-auto object-contain"
           />
         </div>
 

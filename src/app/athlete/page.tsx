@@ -17,9 +17,9 @@ export default function AthletePortalHub() {
             <Image
               src="/images/kyorix-logo.png"
               alt="Kyorix Sports Technology"
-              width={110}
-              height={32}
-              className="h-8 w-auto object-contain"
+              width={240}
+              height={70}
+              className="h-12 sm:h-14 w-auto object-contain"
             />
           </div>
         </div>

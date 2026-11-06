@@ -36,9 +36,9 @@ export default function AdminNav() {
               <Image
                 src="/images/kyorix-logo.png"
                 alt="Kyorix Logo"
-                width={110}
-                height={32}
-                className="h-8 w-auto object-contain"
+                width={200}
+                height={60}
+                className="h-11 sm:h-12 w-auto object-contain"
               />
               <div className="hidden sm:flex flex-col border-l border-slate-200 pl-3">
                 <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Admin Console</span>

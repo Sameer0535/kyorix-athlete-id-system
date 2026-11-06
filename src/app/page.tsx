@@ -1,44 +1,48 @@
 import Link from "next/link";
 import Image from "next/image";
-import { UserCheck, CreditCard, Award, ShieldCheck, CheckCircle2, ArrowRight } from "lucide-react";
+import { UserCheck, CreditCard, Award, ShieldCheck, ArrowRight, Scale, Users, Trophy } from "lucide-react";
 
 export default function HomePage() {
-  const templates = [
+  const roles = [
     {
       role: "PARTICIPANT",
       title: "Championship Participant",
-      color: "from-blue-600 to-indigo-800",
-      border: "border-blue-200",
-      badgeBg: "bg-blue-50 text-blue-700",
-      description: "Official accreditation badge for athletes competing in Open International Kukkiwon Cup 2026.",
-      previewImg: "/templates/template-participant.jpg",
+      icon: Trophy,
+      color: "border-blue-200 hover:border-blue-400 bg-white",
+      badgeBg: "bg-blue-600 text-white",
+      iconBg: "bg-blue-50 text-blue-600",
+      description: "Official accreditation badge for athletes competing in the Open International Kukkiwon Cup 2026.",
+      features: ["Athlete accreditation", "Weigh-in verification", "Competition ring access"],
     },
     {
       role: "REFEREE",
       title: "Official Referee / Judge",
-      color: "from-cyan-500 to-blue-700",
-      border: "border-cyan-200",
-      badgeBg: "bg-cyan-50 text-cyan-700",
+      icon: Scale,
+      color: "border-cyan-200 hover:border-cyan-400 bg-white",
+      badgeBg: "bg-cyan-600 text-white",
+      iconBg: "bg-cyan-50 text-cyan-600",
       description: "Accreditation badge for certified international and national referees and ring officials.",
-      previewImg: "/templates/template-referee.jpg",
+      features: ["Official referee credential", "Scoring table access", "Technical committee entry"],
     },
     {
       role: "COACH",
       title: "Team Coach / Master",
-      color: "from-red-600 to-slate-900",
-      border: "border-red-200",
-      badgeBg: "bg-red-50 text-red-700",
+      icon: Award,
+      color: "border-red-200 hover:border-red-400 bg-white",
+      badgeBg: "bg-red-600 text-white",
+      iconBg: "bg-red-50 text-red-600",
       description: "Official team coach pass granting floor and corner access for recognized academy masters.",
-      previewImg: "/templates/template-coach.jpg",
+      features: ["Corner coach authorization", "Athlete warm-up zone access", "Academy representation"],
     },
     {
       role: "STAFF",
       title: "Organising Staff",
-      color: "from-blue-700 to-amber-600",
-      border: "border-amber-200",
-      badgeBg: "bg-amber-50 text-amber-800",
+      icon: Users,
+      color: "border-amber-200 hover:border-amber-400 bg-white",
+      badgeBg: "bg-amber-600 text-white",
+      iconBg: "bg-amber-50 text-amber-600",
       description: "Accreditation pass for operational personnel, medical crew, and committee coordinators.",
-      previewImg: "/templates/template-staff.jpg",
+      features: ["Operational area access", "Organising committee pass", "Event support badge"],
     },
   ];
 
@@ -46,14 +50,14 @@ export default function HomePage() {
     <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-between">
       {/* Top Header */}
       <header className="w-full border-b border-slate-100 bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-3 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <Image
               src="/images/kyorix-logo.png"
               alt="Kyorix Sport Technology"
-              width={160}
-              height={50}
-              className="h-10 w-auto object-contain"
+              width={260}
+              height={75}
+              className="h-14 sm:h-16 w-auto object-contain"
               priority
             />
           </Link>
@@ -73,7 +77,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/athlete/register"
-              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl shadow-xs transition shadow-blue-500/20"
+              className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl shadow-xs transition shadow-blue-500/20"
             >
               Register Now
               <ArrowRight className="w-4 h-4" />
@@ -85,7 +89,19 @@ export default function HomePage() {
       {/* Hero Section */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-8 py-10 sm:py-16 w-full">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
+          {/* Big Company Logo In Hero */}
+          <div className="flex justify-center mb-6">
+            <Image
+              src="/images/kyorix-logo.png"
+              alt="Kyorix Sport Technology"
+              width={380}
+              height={110}
+              className="h-20 sm:h-24 w-auto object-contain drop-shadow-xs"
+              priority
+            />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
             <Award className="w-3.5 h-3.5 text-blue-600" />
             Open International Kukkiwon Cup 2026
           </div>
@@ -130,9 +146,9 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
               <Award className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-lg mb-2">4 Official Roles & Templates</h3>
+            <h3 className="font-bold text-slate-900 text-lg mb-2">4 Official Roles</h3>
             <p className="text-slate-600 text-sm leading-relaxed">
-              Choose your accreditation badge: Participant, Referee, Coach, or Staff. Every badge is generated with print-ready high fidelity.
+              Accreditation categories tailored for Participants, Referees, Coaches, and Organising Staff with print-ready high fidelity.
             </p>
           </div>
 
@@ -147,55 +163,59 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* The 4 Official Templates Showcase */}
+        {/* Accreditation Categories (No raw templates shown) */}
         <section className="mb-16">
           <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Official Templates</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Accreditation Roles</span>
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 mt-1">
-              Selectable Accreditation Badges
+              Official Championship Categories
             </h2>
             <p className="text-slate-600 text-sm mt-2">
-              Select one of the 4 official templates during registration. Your ID card will be rendered directly onto your selected championship badge.
+              Select your championship category during registration. Your ID card will be verified and generated by the tournament committee.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {templates.map((tmpl) => (
-              <div
-                key={tmpl.role}
-                className={`bg-white rounded-2xl border ${tmpl.border} shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group`}
-              >
-                <div className="relative aspect-[3/4] bg-slate-100 overflow-hidden border-b border-slate-100">
-                  <Image
-                    src={tmpl.previewImg}
-                    alt={tmpl.title}
-                    fill
-                    className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
-                    sizes="(max-width: 768px) 100vw, 25vw"
-                  />
-                  <div className="absolute top-3 left-3">
-                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase ${tmpl.badgeBg} shadow-xs`}>
-                      {tmpl.role}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 flex-1 flex flex-col justify-between">
+            {roles.map((r) => {
+              const IconComp = r.icon;
+              return (
+                <div
+                  key={r.role}
+                  className={`bg-white rounded-2xl border ${r.color} shadow-xs hover:shadow-md transition-all p-6 flex flex-col justify-between`}
+                >
                   <div>
-                    <h3 className="font-bold text-slate-900 text-base mb-1.5">{tmpl.title}</h3>
-                    <p className="text-slate-600 text-xs leading-relaxed mb-4">{tmpl.description}</p>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={`w-12 h-12 rounded-xl ${r.iconBg} flex items-center justify-center`}>
+                        <IconComp className="w-6 h-6" />
+                      </div>
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase ${r.badgeBg} shadow-xs`}>
+                        {r.role}
+                      </span>
+                    </div>
+
+                    <h3 className="font-bold text-slate-900 text-base mb-2">{r.title}</h3>
+                    <p className="text-slate-600 text-xs leading-relaxed mb-4">{r.description}</p>
+
+                    <ul className="space-y-1.5 text-xs text-slate-500 mb-6">
+                      {r.features.map((feat, idx) => (
+                        <li key={idx} className="flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
                   <Link
-                    href={`/athlete/register?role=${tmpl.role}`}
-                    className="w-full text-center py-2 px-3 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-blue-50 text-blue-700 border border-blue-200 transition flex items-center justify-center gap-1.5"
+                    href={`/athlete/register?role=${r.role}`}
+                    className="w-full text-center py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-50 hover:bg-blue-50 text-blue-700 border border-blue-200 transition flex items-center justify-center gap-1.5"
                   >
-                    Select {tmpl.role}
+                    Register as {r.role}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

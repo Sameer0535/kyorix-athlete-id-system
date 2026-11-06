@@ -16,6 +16,8 @@ import {
   Check,
   Copy,
   BadgeCheck,
+  Trophy,
+  Users,
 } from "lucide-react";
 import PhotoCropper from "@/components/PhotoCropper";
 
@@ -40,41 +42,51 @@ const TEMPLATE_OPTIONS: {
   role: CardRoleType;
   title: string;
   subtitle: string;
+  description: string;
+  icon: typeof Trophy;
   color: string;
   badgeBg: string;
-  previewImg: string;
+  iconBg: string;
 }[] = [
   {
     role: "PARTICIPANT",
     title: "Participant",
     subtitle: "Championship Athlete",
-    color: "border-blue-600 bg-blue-50/50",
+    description: "Official competitor badge for tournament athletes",
+    icon: Trophy,
+    color: "border-blue-600 bg-blue-50/70",
     badgeBg: "bg-blue-600 text-white",
-    previewImg: "/templates/template-participant.jpg",
+    iconBg: "bg-blue-100 text-blue-700",
   },
   {
     role: "REFEREE",
     title: "Referee",
     subtitle: "Ring Judge / Official",
-    color: "border-cyan-600 bg-cyan-50/50",
+    description: "Accreditation pass for ring referees and mat judges",
+    icon: Scale,
+    color: "border-cyan-600 bg-cyan-50/70",
     badgeBg: "bg-cyan-600 text-white",
-    previewImg: "/templates/template-referee.jpg",
+    iconBg: "bg-cyan-100 text-cyan-700",
   },
   {
     role: "COACH",
     title: "Coach",
     subtitle: "Team Coach / Master",
-    color: "border-red-600 bg-red-50/50",
+    description: "Official corner pass for registered team masters",
+    icon: Award,
+    color: "border-red-600 bg-red-50/70",
     badgeBg: "bg-red-600 text-white",
-    previewImg: "/templates/template-coach.jpg",
+    iconBg: "bg-red-100 text-red-700",
   },
   {
     role: "STAFF",
     title: "Staff",
     subtitle: "Organising Committee",
-    color: "border-indigo-600 bg-indigo-50/50",
-    badgeBg: "bg-indigo-600 text-white",
-    previewImg: "/templates/template-staff.jpg",
+    description: "Access pass for operational personnel and coordinators",
+    icon: Users,
+    color: "border-amber-600 bg-amber-50/70",
+    badgeBg: "bg-amber-600 text-white",
+    iconBg: "bg-amber-100 text-amber-700",
   },
 ];
 
@@ -541,9 +553,9 @@ export default function AthleteRegisterPage() {
             <Image
               src="/images/kyorix-logo.png"
               alt="Kyorix Sport Technology"
-              width={140}
-              height={45}
-              className="h-8 w-auto object-contain"
+              width={240}
+              height={70}
+              className="h-12 sm:h-14 w-auto object-contain"
               priority
             />
           </Link>
@@ -564,7 +576,7 @@ export default function AthleteRegisterPage() {
             Accreditation & ID Card Registration
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1">
-            Select your accreditation badge template and enter your verified details to generate your championship pass.
+            Select your accreditation role category and enter your verified details to generate your championship pass.
           </p>
         </div>
 
@@ -581,52 +593,50 @@ export default function AthleteRegisterPage() {
           </div>
         ) : (
           <form onSubmit={handleProceedToReview} className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-10 space-y-8 shadow-sm">
-            {/* Template Selection: 4 Options */}
+            {/* Role Category Selection: 4 Options */}
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <BadgeCheck className="w-4 h-4 text-blue-600" />
-                  1. Choose ID Card Badge Template <span className="text-red-500">*</span>
+                  1. Select Accreditation Role <span className="text-red-500">*</span>
                 </h2>
-                <span className="text-xs text-blue-600 font-semibold">4 Official Options</span>
+                <span className="text-xs text-blue-600 font-semibold">4 Official Categories</span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 {TEMPLATE_OPTIONS.map((tmpl) => {
                   const isSelected = cardRole === tmpl.role;
+                  const IconComp = tmpl.icon;
                   return (
                     <button
                       type="button"
                       key={tmpl.role}
                       onClick={() => setCardRole(tmpl.role)}
-                      className={`relative flex flex-col justify-between text-left rounded-2xl border-2 transition-all p-2.5 overflow-hidden ${
+                      className={`relative flex flex-col justify-between text-left rounded-2xl border-2 transition-all p-4 ${
                         isSelected
-                          ? "border-blue-600 bg-blue-50/60 shadow-sm ring-2 ring-blue-500/20"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          ? `${tmpl.color} shadow-sm ring-2 ring-blue-500/20`
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
                       }`}
                     >
-                      {/* Badge Preview Image */}
-                      <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-slate-100 mb-2 border border-slate-200/80">
-                        <Image
-                          src={tmpl.previewImg}
-                          alt={tmpl.title}
-                          fill
-                          className="object-cover object-top"
-                          sizes="(max-width: 768px) 50vw, 25vw"
-                        />
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-sm">
-                            <Check className="w-3 h-3 stroke-[3]" />
+                      <div className="flex items-center justify-between mb-3 w-full">
+                        <div className={`w-10 h-10 rounded-xl ${tmpl.iconBg} flex items-center justify-center shrink-0`}>
+                          <IconComp className="w-5 h-5" />
+                        </div>
+                        {isSelected ? (
+                          <div className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
                           </div>
+                        ) : (
+                          <div className="w-5 h-5 rounded-full border-2 border-slate-300" />
                         )}
                       </div>
 
                       <div>
-                        <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider ${tmpl.badgeBg}`}>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider ${tmpl.badgeBg}`}>
                           {tmpl.role}
                         </span>
-                        <div className="font-bold text-slate-900 text-xs mt-1 leading-snug">{tmpl.title}</div>
-                        <div className="text-[10px] text-slate-500 truncate">{tmpl.subtitle}</div>
+                        <div className="font-bold text-slate-900 text-sm mt-2 leading-snug">{tmpl.title}</div>
+                        <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">{tmpl.description}</div>
                       </div>
                     </button>
                   );

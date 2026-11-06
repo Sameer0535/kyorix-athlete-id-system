@@ -179,10 +179,10 @@ export default function AdminRegistrationsPage() {
 
     setActionInProgress(true);
     try {
-      const res = await fetch(`/api/admin/registrations/${item.id}/approve`, {
-        method: "POST",
+      const res = await fetch(`/api/admin/registrations/${item.id}/status`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ action: "APPROVE" }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error?.message || "Approval failed.");
@@ -202,10 +202,10 @@ export default function AdminRegistrationsPage() {
 
     setActionInProgress(true);
     try {
-      const res = await fetch(`/api/admin/registrations/${rejectModalItem.id}/reject`, {
-        method: "POST",
+      const res = await fetch(`/api/admin/registrations/${rejectModalItem.id}/status`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: rejectReason }),
+        body: JSON.stringify({ action: "REJECT", reason: rejectReason }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error?.message || "Rejection failed.");
@@ -227,10 +227,10 @@ export default function AdminRegistrationsPage() {
 
     setActionInProgress(true);
     try {
-      const res = await fetch(`/api/admin/registrations/${changesModalItem.id}/request-changes`, {
-        method: "POST",
+      const res = await fetch(`/api/admin/registrations/${changesModalItem.id}/status`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: changesNotes }),
+        body: JSON.stringify({ action: "REQUEST_CHANGES", notes: changesNotes }),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error?.message || "Request changes failed.");
@@ -260,7 +260,7 @@ export default function AdminRegistrationsPage() {
 
     setActionInProgress(true);
     try {
-      const res = await fetch(`/api/admin/registrations/${editModalItem.id}`, {
+      const res = await fetch(`/api/admin/registrations/${editModalItem.id}/edit`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

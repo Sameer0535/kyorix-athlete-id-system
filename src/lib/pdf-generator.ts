@@ -414,10 +414,10 @@ export async function drawPortraitTemplateCard(
   };
   const templateFilename = templateMap[role] || "template-participant.jpg";
 
-  // Resolve template file path
-  let templatePath = path.resolve(process.cwd(), "public", "templates", templateFilename);
+  // Resolve private template file path
+  let templatePath = path.resolve(process.cwd(), "src", "assets", "templates", templateFilename);
   if (!fs.existsSync(templatePath)) {
-    templatePath = path.resolve(process.cwd(), "src", "assets", "templates", templateFilename);
+    templatePath = path.resolve(process.cwd(), "public", "templates", templateFilename);
   }
 
   const { width: cardWidth, height: cardHeight } = page.getSize();

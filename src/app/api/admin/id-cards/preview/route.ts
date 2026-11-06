@@ -70,6 +70,7 @@ export async function GET(req: NextRequest) {
       division: registration.weightCategory.division,
       photoStorageKey: registration.photograph.storageKey,
       photoMimeType: registration.photograph.mimeType,
+      cardRole: registration.cardRole || "PARTICIPANT",
       issueDate: new Date(),
     };
 

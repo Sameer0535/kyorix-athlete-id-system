@@ -464,9 +464,9 @@ export default function AthleteCardDownloadPage() {
         <Image
           src="/images/kyorix-logo.png"
           alt="Kyorix Sports Technology"
-          width={100}
-          height={30}
-          className="h-7 w-auto object-contain"
+          width={240}
+          height={70}
+          className="h-12 sm:h-14 w-auto object-contain"
         />
       </div>
 
