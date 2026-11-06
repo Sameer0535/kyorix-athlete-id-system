@@ -1,20 +1,19 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authenticateAdminRequest, logAuditEvent } from "@/lib/security";
-import { savePrivateFile } from "@/lib/storage";
-import { generateBulkCardsPdf, generateIndividualCardPdf, AthleteCardData } from "@/lib/pdf-generator";
+import { enqueueBulkJob } from "@/lib/queue/worker";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { AgeDivision, Gender } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
-  const startTime = Date.now();
   try {
     const auth = await authenticateAdminRequest(req, "cards:bulk_generate");
     if (auth.errorResponse || !auth.session) return auth.errorResponse!;
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { registrationIds, academyId, weightCategoryId, division, gender, selectAll } = body;
 
+    // Build filter criteria
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {
       approvalStatus: "APPROVED",
@@ -35,19 +34,15 @@ export async function POST(req: NextRequest) {
 
     const registrations = await prisma.registration.findMany({
       where,
-      include: {
-        athlete: true,
-        academy: true,
-        weightCategory: true,
-        photograph: true,
-        idCard: true,
-      },
-      orderBy: [{ academy: { name: "asc" } }, { athlete: { fullName: "asc" } }],
+      select: { id: true },
+      orderBy: [{ createdAt: "asc" }],
     });
 
     if (registrations.length === 0) {
       return apiError("No approved registrations found matching the specified criteria.", "NO_RECORDS", 404);
     }
+
+    const regIds = registrations.map((r) => r.id);
 
     // Create CardGenerationBatch record
     const batchCount = await prisma.cardGenerationBatch.count();
@@ -57,162 +52,55 @@ export async function POST(req: NextRequest) {
       data: {
         batchNumber,
         initiatedByAdminId: auth.session.adminId,
-        status: "PROCESSING",
-        totalCards: registrations.length,
+        status: "QUEUED",
+        totalCards: regIds.length,
+        filterCriteria: JSON.stringify({
+          academyId,
+          weightCategoryId,
+          division,
+          gender,
+          count: regIds.length,
+        }),
       },
     });
 
-    // Prepare card payloads
-    const cardsData: AthleteCardData[] = [];
-    const regToCardMap = new Map<string, string>();
-
-    let currentCardIndex = await prisma.idCardRecord.count();
-
-    for (const reg of registrations) {
-      let cardNumber = reg.idCard?.cardNumber;
-      if (!cardNumber) {
-        currentCardIndex += 1;
-        cardNumber = `KYX-ID-${new Date().getFullYear()}-${String(currentCardIndex).padStart(5, "0")}`;
-      }
-      regToCardMap.set(reg.id, cardNumber);
-
-      cardsData.push({
-        cardNumber,
-        registrationNumber: reg.registrationNumber,
-        kukkiwonId: reg.athlete.kukkiwonId,
-        fullName: reg.athlete.fullName,
-        gender: reg.athlete.gender,
-        danOrPoom: reg.athlete.danOrPoom,
-        academyName: reg.academy.name,
-        academyCity: reg.academy.city,
-        weightCategoryName: reg.weightCategory.name,
-        division: reg.weightCategory.division,
-        photoStorageKey: reg.photograph.storageKey,
-        photoMimeType: reg.photograph.mimeType,
-        issueDate: new Date(),
-      });
-    }
-
-    // Render multi-page unified PDF
-    const { buffer: multiPageBuffer, pageCount, errors } = await generateBulkCardsPdf(cardsData);
-
-    // Save multi-page PDF to private storage
-    const storageResult = await savePrivateFile({
-      buffer: multiPageBuffer,
-      originalFilename: `${batchNumber}_all_cards.pdf`,
-      subfolder: "batches",
-      allowedMimeTypes: ["application/pdf"],
+    // Enqueue background processing job
+    const job = await enqueueBulkJob({
+      batchId: batch.id,
+      adminId: auth.session.adminId,
+      registrationIds: regIds,
+      filterCriteria: { academyId, weightCategoryId, division, gender },
     });
 
-    // Also render and update individual card records in PostgreSQL
-    let successfulCount = 0;
-    for (const reg of registrations) {
-      const cardNumber = regToCardMap.get(reg.id)!;
-      try {
-        const cardData = cardsData.find((c) => c.cardNumber === cardNumber)!;
-        const { buffer: singleBuffer } = await generateIndividualCardPdf(cardData);
-        const singleStorageResult = await savePrivateFile({
-          buffer: singleBuffer,
-          originalFilename: `${cardNumber}.pdf`,
-          subfolder: "cards",
-          allowedMimeTypes: ["application/pdf"],
-        });
-
-        const card = await prisma.idCardRecord.upsert({
-          where: { registrationId: reg.id },
-          create: {
-            cardNumber,
-            registrationId: reg.id,
-            athleteId: reg.athleteId,
-            status: "GENERATED",
-            generatedFileKey: singleStorageResult.storageKey,
-            generatedFileSizeBytes: singleStorageResult.fileSizeBytes,
-            checksumSha256: singleStorageResult.checksumSha256,
-            generatedAt: new Date(),
-            generatedByAdminId: auth.session.adminId,
-            batchId: batch.id,
-            cardTemplateVersion: "v1.0",
-          },
-          update: {
-            cardNumber,
-            status: "GENERATED",
-            generatedFileKey: singleStorageResult.storageKey,
-            generatedFileSizeBytes: singleStorageResult.fileSizeBytes,
-            checksumSha256: singleStorageResult.checksumSha256,
-            generatedAt: new Date(),
-            generatedByAdminId: auth.session.adminId,
-            batchId: batch.id,
-          },
-        });
-
-        await prisma.generationHistory.create({
-          data: {
-            idCardRecordId: card.id,
-            batchId: batch.id,
-            triggerType: "ADMIN_BULK",
-            triggeredByAdminId: auth.session.adminId,
-            success: true,
-            fileSizeBytes: singleStorageResult.fileSizeBytes,
-          },
-        });
-
-        successfulCount += 1;
-      } catch (singleErr) {
-        console.error(`[ERROR] Failed to render individual card for ${cardNumber}:`, singleErr);
-      }
-    }
-
-    const failedCount = registrations.length - successfulCount;
-    const finalBatchStatus = failedCount === 0 ? "COMPLETED" : successfulCount > 0 ? "PARTIAL_FAILURE" : "FAILED";
-
-    // Update batch record
-    const updatedBatch = await prisma.cardGenerationBatch.update({
-      where: { id: batch.id },
-      data: {
-        status: finalBatchStatus,
-        successfulCards: successfulCount,
-        failedCards: failedCount,
-        archiveFileKey: storageResult.storageKey,
-        completedAt: new Date(),
-        errorSummary: errors.length > 0 ? JSON.stringify(errors) : null,
-      },
-    });
-
-    const totalDurationMs = Date.now() - startTime;
-
-    // Record audit event
+    // Log initiation audit event
     await logAuditEvent({
       actorType: "ADMIN",
       actorId: auth.session.adminId,
-      adminUserId: auth.session.adminId,
-      action: "BULK_CARDS_GENERATED",
+      action: "ADMIN_BULK_BATCH_QUEUED",
       entityType: "CardGenerationBatch",
       entityId: batch.id,
       details: {
-        batchNumber: batch.batchNumber,
-        totalRequested: registrations.length,
-        successfulCards: successfulCount,
-        failedCards: failedCount,
-        durationMs: totalDurationMs,
-        storageKey: storageResult.storageKey,
+        batchNumber,
+        totalSelected: regIds.length,
+        jobId: job.id,
       },
       ipAddress: req.headers.get("x-forwarded-for") || undefined,
       userAgent: req.headers.get("user-agent") || undefined,
     });
 
-    return apiSuccess({
-      batch: updatedBatch,
-      totalCards: registrations.length,
-      successfulCards: successfulCount,
-      failedCards: failedCount,
-      pageCount,
-      durationMs: totalDurationMs,
-      downloadUrl: `/api/admin/id-cards/bulk-download?batchId=${batch.id}`,
-      message: `Successfully processed batch ${batchNumber}: ${successfulCount} ID cards generated (${pageCount} pages).`,
-    });
+    return apiSuccess(
+      {
+        batchId: batch.id,
+        batchNumber: batch.batchNumber,
+        jobId: job.id,
+        status: "QUEUED",
+        totalCards: batch.totalCards,
+        message: `Bulk generation job enqueued for ${regIds.length} athletes. Processing asynchronously in the background.`,
+      },
+      202
+    );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error during bulk card generation";
+    const message = err instanceof Error ? err.message : "Failed to initiate bulk card generation";
     return apiError(message, "BULK_GENERATION_ERROR", 500);
   }
 }
-

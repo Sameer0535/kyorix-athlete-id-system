@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateKukkiwonId, checkRateLimit } from "@/lib/security";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { createAthleteAccessToken } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -89,6 +90,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    let downloadToken: string | undefined = undefined;
+    if (registration.approvalStatus === "APPROVED") {
+      downloadToken = await createAthleteAccessToken({
+        registrationId: registration.id,
+        athleteId: registration.athleteId,
+        kukkiwonId: registration.athlete.kukkiwonId,
+      });
+    }
+
     return apiSuccess({
       found: true,
       registration: {
@@ -112,6 +122,7 @@ export async function GET(req: NextRequest) {
         canDownloadCard: registration.approvalStatus === "APPROVED",
         requiresChanges: registration.approvalStatus === "CHANGES_REQUESTED",
         athleteAccessToken: registration.athleteAccessToken,
+        downloadToken,
       },
     });
   } catch (err: unknown) {

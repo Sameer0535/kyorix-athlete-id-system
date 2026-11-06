@@ -15,6 +15,9 @@ import {
   Eye,
   FileText,
   Printer,
+  ShieldCheck,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 
 interface AthleteLookupResult {
@@ -43,18 +46,26 @@ interface AthleteLookupResult {
 
 function CardDownloadContent() {
   const searchParams = useSearchParams();
-  const initialId = searchParams.get("kukkiwonId") || "";
+  const initialId = searchParams.get("kukkiwonId") || searchParams.get("id") || "";
+  const initialToken = searchParams.get("token") || "";
 
   const [kukkiwonId, setKukkiwonId] = useState(initialId);
+  const [accessToken, setAccessToken] = useState(initialToken);
+  const [downloadToken, setDownloadToken] = useState(initialToken);
+  const [isTokenVerified, setIsTokenVerified] = useState(false);
+
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<AthleteLookupResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
 
-  const handleSearch = async (targetId: string) => {
-    const trimmed = targetId.trim().toUpperCase();
-    if (!trimmed) {
-      setError("Please enter your Kukkiwon ID.");
+  // Authenticate and verify download credentials
+  const handleVerifyAndSearch = async (targetId: string, secretToken?: string) => {
+    const trimmedId = targetId.trim().toUpperCase();
+    const tokenToUse = (secretToken || accessToken).trim();
+
+    if (!trimmedId) {
+      setError("Please enter your Kukkiwon ID or Registration Number.");
       return;
     }
 
@@ -64,7 +75,45 @@ function CardDownloadContent() {
     setShowPdfPreview(false);
 
     try {
-      const res = await fetch(`/api/athletes/lookup?kukkiwonId=${encodeURIComponent(trimmed)}`);
+      // If access token is provided, verify directly with verify-access endpoint
+      if (tokenToUse) {
+        const verifyRes = await fetch("/api/athletes/verify-access", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ identifier: trimmedId, accessToken: tokenToUse }),
+        });
+        const verifyData = await verifyRes.json();
+
+        if (verifyRes.ok && verifyData.success) {
+          setDownloadToken(verifyData.data.downloadToken);
+          setIsTokenVerified(true);
+          const reg = verifyData.data.registration;
+          setResult({
+            found: true,
+            kukkiwonId: reg.athlete.kukkiwonId,
+            athlete: {
+              id: reg.athlete.id,
+              kukkiwonId: reg.athlete.kukkiwonId,
+              fullName: reg.athlete.fullName,
+              gender: reg.athlete.gender,
+              danOrPoom: reg.athlete.danOrPoom,
+              academyName: reg.academy.name,
+              academyCity: reg.academy.city,
+              registrationStatus: reg.approvalStatus,
+              weightCategory: reg.weightCategory.name,
+              idCard: reg.idCard,
+              canDownloadCard: reg.approvalStatus === "APPROVED",
+            },
+          });
+          return;
+        } else {
+          // Token verification failed
+          throw new Error(verifyData.error?.message || "Invalid Access Token for this athlete.");
+        }
+      }
+
+      // If no token provided yet, perform read-only lookup
+      const res = await fetch(`/api/athletes/lookup?kukkiwonId=${encodeURIComponent(trimmedId)}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -72,8 +121,10 @@ function CardDownloadContent() {
       }
 
       setResult(data.data);
+      setIsTokenVerified(false);
+      setDownloadToken("");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error querying Kukkiwon database.";
+      const msg = err instanceof Error ? err.message : "Error querying athlete database.";
       setError(msg);
     } finally {
       setSearching(false);
@@ -82,173 +133,249 @@ function CardDownloadContent() {
 
   useEffect(() => {
     if (initialId) {
-      handleSearch(initialId);
+      handleVerifyAndSearch(initialId, initialToken);
     }
-  }, [initialId]);
+  }, [initialId, initialToken]);
 
   const handleDownload = () => {
     if (!result?.athlete?.kukkiwonId) return;
-    window.open(`/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}`, "_blank");
+    if (!downloadToken) {
+      setError("Verified Access Token is required to download this official credential.");
+      return;
+    }
+    const url = `/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&token=${encodeURIComponent(downloadToken)}`;
+    window.open(url, "_blank");
   };
 
   return (
     <div className="space-y-6">
-      {/* Search Input Box */}
+      {/* Search & Verification Input Box */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSearch(kukkiwonId);
+          handleVerifyAndSearch(kukkiwonId, accessToken);
         }}
-        className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl"
+        className="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl space-y-4"
       >
-        <label className="block text-xs font-semibold text-slate-300 mb-2">
-          Enter Your Kukkiwon ID
-        </label>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            required
-            value={kukkiwonId}
-            onChange={(e) => setKukkiwonId(e.target.value.toUpperCase())}
-            placeholder="e.g. 05123456 or KUK-987654"
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-mono text-white placeholder-slate-600 focus:outline-none focus:border-emerald-500 uppercase"
-          />
-          <button
-            type="submit"
-            disabled={searching}
-            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40"
-          >
-            <Search className="w-4 h-4" />
-            {searching ? "Verifying..." : "Find My Credential"}
-          </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              Kukkiwon ID / Reg Number
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={kukkiwonId}
+                onChange={(e) => setKukkiwonId(e.target.value)}
+                placeholder="e.g. 05872134 or REG-2026-0001"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition uppercase"
+                disabled={searching}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Registration Access Code</span>
+              <span className="text-[11px] font-normal text-cyan-400 lowercase">from submission</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+                placeholder="Paste Access Token from registration"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition font-mono text-xs"
+                disabled={searching}
+              />
+            </div>
+          </div>
         </div>
+
+        <button
+          type="submit"
+          disabled={searching || !kukkiwonId.trim()}
+          className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-3 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-950/40 disabled:opacity-50"
+        >
+          {searching ? (
+            <span>Verifying Credentials...</span>
+          ) : (
+            <>
+              <ShieldCheck className="w-4 h-4" />
+              Verify & Retrieve Official ID Card
+            </>
+          )}
+        </button>
       </form>
 
+      {/* Error Notice */}
       {error && (
-        <div className="p-4 bg-red-950/60 border border-red-800 rounded-xl flex items-start gap-3 text-red-300 text-xs">
-          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-400" />
-          <span>{error}</span>
+        <div className="p-4 bg-red-950/60 border border-red-800/80 rounded-xl text-xs sm:text-sm text-red-200 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="font-bold">Credential Verification Notice</div>
+            <div>{error}</div>
+          </div>
         </div>
       )}
 
-      {/* Results View */}
+      {/* Lookup & Verification Result Card */}
       {result && (
-        <div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
           {!result.found ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-4">
-              <div className="w-12 h-12 rounded-full bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
-                <XCircle className="w-6 h-6" />
-              </div>
-              <h2 className="text-lg font-bold text-white">No Athlete Record Found</h2>
+            <div className="text-center py-8 space-y-3">
+              <XCircle className="w-12 h-12 text-slate-600 mx-auto" />
+              <h3 className="text-base font-bold text-slate-300">Athlete Record Not Found</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                No athlete is registered under Kukkiwon ID <span className="font-mono text-slate-200">{result.kukkiwonId}</span>. If you haven&apos;t registered yet, submit your enrollment below.
+                {result.message || "Please check your Kukkiwon ID or submit a new registration."}
               </p>
               <Link
                 href="/athlete/register"
-                className="inline-block bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2 px-5 rounded-xl text-xs transition"
+                className="inline-block mt-2 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-semibold px-4 py-2 rounded-xl text-xs transition"
               >
-                Register as an Athlete &rarr;
+                Go to Registration Form &rarr;
               </Link>
             </div>
           ) : result.athlete && (
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
-              {/* Header Status */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+            <div className="space-y-6">
+              {/* Header Profile */}
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 pb-4 border-b border-slate-800">
                 <div>
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                    Official Athlete Dossier
-                  </span>
-                  <h2 className="text-2xl font-bold text-white mt-0.5">
-                    {result.athlete.fullName}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-extrabold text-white">{result.athlete.fullName}</h2>
+                    {isTokenVerified ? (
+                      <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <ShieldCheck className="w-3 h-3" /> Token Verified
+                      </span>
+                    ) : (
+                      <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Token Required
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1 flex items-center gap-3">
+                    <span>Kukkiwon ID: <strong className="text-cyan-400">{result.athlete.kukkiwonId}</strong></span>
+                    <span>&bull;</span>
+                    <span>Rank: <strong className="text-slate-300">{result.athlete.danOrPoom || "Registered Athlete"}</strong></span>
+                  </div>
                 </div>
 
+                {/* Status Badge */}
                 <div>
-                  {result.athlete.registrationStatus === "APPROVED" ? (
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-800 px-3.5 py-1.5 rounded-full text-emerald-400 text-xs font-bold">
-                      <CheckCircle className="w-3.5 h-3.5" /> ID Card Available
+                  {result.athlete.registrationStatus === "APPROVED" && (
+                    <span className="inline-flex items-center gap-1.5 bg-emerald-950/80 border border-emerald-700 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Registration Approved
                     </span>
-                  ) : result.athlete.registrationStatus === "REJECTED" ? (
-                    <span className="inline-flex items-center gap-1.5 bg-red-950/80 border border-red-800 px-3.5 py-1.5 rounded-full text-red-400 text-xs font-bold">
-                      <XCircle className="w-3.5 h-3.5" /> Application Rejected
+                  )}
+                  {result.athlete.registrationStatus === "PENDING_REVIEW" && (
+                    <span className="inline-flex items-center gap-1.5 bg-amber-950/80 border border-amber-700 text-amber-300 text-xs font-bold px-3 py-1.5 rounded-full">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" /> Pending Admin Review
                     </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 bg-amber-950/80 border border-amber-800 px-3.5 py-1.5 rounded-full text-amber-300 text-xs font-bold">
-                      <Clock className="w-3.5 h-3.5" /> Pending Admin Review
+                  )}
+                  {result.athlete.registrationStatus === "CHANGES_REQUESTED" && (
+                    <span className="inline-flex items-center gap-1.5 bg-blue-950/80 border border-blue-700 text-blue-300 text-xs font-bold px-3 py-1.5 rounded-full">
+                      <AlertCircle className="w-3.5 h-3.5 text-blue-400" /> Corrections Requested
+                    </span>
+                  )}
+                  {result.athlete.registrationStatus === "REJECTED" && (
+                    <span className="inline-flex items-center gap-1.5 bg-red-950/80 border border-red-700 text-red-300 text-xs font-bold px-3 py-1.5 rounded-full">
+                      <XCircle className="w-3.5 h-3.5 text-red-400" /> Registration Rejected
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Verified Details Card */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 space-y-3 text-xs">
-                <div className="flex items-center gap-2 text-slate-400 font-semibold mb-2">
-                  <Award className="w-4 h-4 text-emerald-400" />
-                  <span>Verified Championship Credentials</span>
+              {/* Detail Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Affiliated Academy</span>
+                  <span className="font-semibold text-white">{result.athlete.academyName}</span>
+                  <span className="text-slate-400 block text-[11px]">{result.athlete.academyCity}</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Kukkiwon ID</span>
-                    <span className="font-mono font-bold text-white text-sm">{result.athlete.kukkiwonId}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Belt Rank</span>
-                    <span className="font-semibold text-slate-200">{result.athlete.danOrPoom || "Registered"}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Academy Affiliation</span>
-                    <span className="font-semibold text-white">{result.athlete.academyName}</span>
-                    <span className="text-slate-400 block text-[11px]">{result.athlete.academyCity}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block text-[11px]">Registered Weight Category</span>
-                    <span className="font-semibold text-cyan-400">{result.athlete.weightCategory}</span>
-                  </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Registered Weight Category</span>
+                  <span className="font-semibold text-cyan-400">{result.athlete.weightCategory}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[11px]">Official Card Number</span>
+                  <span className="font-mono text-slate-300">
+                    {result.athlete.idCard?.cardNumber || "Pending Generation"}
+                  </span>
                 </div>
               </div>
 
               {/* Action Area for Approved Card */}
               {result.athlete.registrationStatus === "APPROVED" ? (
                 <div className="space-y-4 pt-2">
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={handleDownload}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40"
-                    >
-                      <Download className="w-4 h-4" />
-                      Download Official ID Card (Print-Ready PDF)
-                    </button>
-
-                    <button
-                      onClick={() => setShowPdfPreview(!showPdfPreview)}
-                      className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-5 rounded-xl text-sm transition border border-slate-700"
-                    >
-                      <Eye className="w-4 h-4" />
-                      {showPdfPreview ? "Hide Card Preview" : "View High-Res Card Preview"}
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 text-center">
-                    Standard CR80 Landscape Format (85.6mm × 54mm) &bull; No QR code or barcode required &bull; Print-ready vector output
-                  </p>
-
-                  {/* Embedded PDF Card Preview Frame */}
-                  {showPdfPreview && (
-                    <div className="mt-4 p-4 bg-slate-950 rounded-2xl border border-cyan-500/40 space-y-3">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="font-bold text-cyan-400 flex items-center gap-1.5">
-                          <Printer className="w-3.5 h-3.5" /> High-Resolution Print Preview
-                        </span>
-                        <span className="text-slate-500 text-[11px]">Standard CR80 (85.6mm × 54mm)</span>
+                  {!isTokenVerified ? (
+                    <div className="p-4 bg-slate-950 border border-cyan-500/40 rounded-xl text-xs space-y-3">
+                      <div className="flex items-center gap-2 text-cyan-300 font-bold">
+                        <KeyRound className="w-4 h-4 text-cyan-400" />
+                        Unlock ID Card Download & Print Preview
                       </div>
-                      <div className="w-full h-72 rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
-                        <iframe
-                          src={`/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&preview=true`}
-                          title="Card Preview"
-                          className="w-full h-full border-0"
+                      <p className="text-slate-400">
+                        To protect athlete personal information, please enter your secret Registration Access Token in the form above to verify ownership and download your official credential.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={accessToken}
+                          onChange={(e) => setAccessToken(e.target.value)}
+                          placeholder="Paste Registration Access Token"
+                          className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white font-mono"
                         />
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyAndSearch(kukkiwonId, accessToken)}
+                          className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-4 py-2 rounded-lg text-xs transition"
+                        >
+                          Verify Token
+                        </button>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={handleDownload}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download Official ID Card (Print-Ready PDF)
+                        </button>
+
+                        <button
+                          onClick={() => setShowPdfPreview(!showPdfPreview)}
+                          className="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-5 rounded-xl text-sm transition border border-slate-700"
+                        >
+                          <Eye className="w-4 h-4" />
+                          {showPdfPreview ? "Hide Card Preview" : "View High-Res Card Preview"}
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-slate-400 text-center">
+                        Standard CR80 Landscape Format (85.6mm × 54mm) &bull; No QR code or barcode required &bull; Print-ready vector output
+                      </p>
+
+                      {/* Embedded PDF Card Preview Frame */}
+                      {showPdfPreview && (
+                        <div className="mt-4 p-4 bg-slate-950 rounded-2xl border border-cyan-500/40 space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                              <Printer className="w-3.5 h-3.5" /> High-Resolution Print Preview
+                            </span>
+                            <span className="text-slate-500 text-[11px]">Standard CR80 (85.6mm × 54mm)</span>
+                          </div>
+                          <div className="w-full h-72 rounded-xl overflow-hidden border border-slate-800 bg-slate-900">
+                            <iframe
+                              src={`/api/id-cards/download?kukkiwonId=${encodeURIComponent(result.athlete.kukkiwonId)}&token=${encodeURIComponent(downloadToken)}&preview=true`}
+                              title="Card Preview"
+                              className="w-full h-full border-0"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
@@ -292,7 +419,7 @@ export default function AthleteCardDownloadPage() {
         Official Athlete ID Card Download
       </h1>
       <p className="text-xs sm:text-sm text-slate-400 mt-1 mb-8">
-        Enter your Kukkiwon ID to retrieve and download your official 85.6mm × 54mm print-ready championship accreditation credential.
+        Authenticate using your Kukkiwon ID and registration Access Code to securely preview and download your official 85.6mm × 54mm print-ready credential.
       </p>
 
       <Suspense fallback={<div className="text-center py-12 text-slate-400 text-sm">Loading credential engine...</div>}>
