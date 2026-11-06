@@ -1,9 +1,9 @@
 import JSZip from "jszip";
 import { PDFDocument } from "pdf-lib";
 import crypto from "crypto";
-import { prisma } from "../prisma.ts";
-import { savePrivateFile, getPrivateFile } from "../storage.ts";
-import { drawAthleteCard, type AthleteCardData, CARD_WIDTH_PT, CARD_HEIGHT_PT } from "../pdf-generator.ts";
+import { prisma } from "../prisma";
+import { savePrivateFile, getPrivateFile } from "../storage";
+import { drawAthleteCard, type AthleteCardData, CARD_WIDTH_PT, CARD_HEIGHT_PT } from "../pdf-generator";
 
 export interface BatchProgressCallback {
   (progress: {

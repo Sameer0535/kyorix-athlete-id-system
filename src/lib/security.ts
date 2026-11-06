@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
-import { prisma } from "./prisma.ts";
+import { prisma } from "./prisma";
 import { ActorType, AdminRole } from "@prisma/client";
-import { verifyAdminSessionToken, type AdminSessionPayload } from "./auth.ts";
-import { apiError } from "./api-response.ts";
+import { verifyAdminSessionToken, type AdminSessionPayload } from "./auth";
+import { apiError } from "./api-response";
 
 /**
  * Standard Kukkiwon ID verification

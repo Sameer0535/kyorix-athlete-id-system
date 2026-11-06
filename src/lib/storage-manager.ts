@@ -1,11 +1,15 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
-import { prisma } from "./prisma.ts";
+import { prisma } from "./prisma";
 
-const PRIVATE_STORAGE_DIR =
-  process.env.STORAGE_LOCAL_ROOT || path.resolve(process.cwd(), "storage", "private");
-const TMP_STORAGE_DIR = path.resolve(process.cwd(), "storage", "tmp");
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+const PRIVATE_STORAGE_DIR = isVercel
+  ? path.resolve("/tmp", "storage", "private")
+  : (process.env.STORAGE_LOCAL_ROOT || path.resolve(process.cwd(), "storage", "private"));
+const TMP_STORAGE_DIR = isVercel
+  ? path.resolve("/tmp", "storage", "tmp")
+  : path.resolve(process.cwd(), "storage", "tmp");
 
 export interface StorageIntegrityReport {
   checkedRecords: number;

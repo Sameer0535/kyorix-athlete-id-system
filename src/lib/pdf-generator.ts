@@ -1,7 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fs from "fs";
 import path from "path";
-import { getPrivateFile } from "./storage.ts";
+import { getPrivateFile } from "./storage";
 
 export interface AthleteCardData {
   cardNumber: string;

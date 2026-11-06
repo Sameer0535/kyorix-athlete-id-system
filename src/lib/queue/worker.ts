@@ -1,6 +1,6 @@
-import { prisma } from "../prisma.ts";
-import { executeBulkExport } from "../export/bulk-exporter.ts";
-import { logAuditEvent } from "../security.ts";
+import { prisma } from "../prisma";
+import { executeBulkExport } from "../export/bulk-exporter";
+import { logAuditEvent } from "../security";
 
 export interface EnqueueBatchJobParams {
   batchId: string;
@@ -127,23 +127,13 @@ export async function processJob(jobId: string, customWorkerId?: string) {
   });
 
   try {
-    // Progress callback for live database updates with intelligent throttling
-    let lastProgressUpdateTime = 0;
+    // Progress callback for live database updates
     const onProgress = async (prog: {
       processedCount: number;
       totalCount: number;
       successfulCount: number;
       failedCount: number;
     }) => {
-      const now = Date.now();
-      const isFinal = prog.processedCount === prog.totalCount;
-
-      // Throttle DB updates to once every 1200ms unless it is the final progress event
-      if (!isFinal && now - lastProgressUpdateTime < 1200) {
-        return;
-      }
-      lastProgressUpdateTime = now;
-
       const percentage = prog.totalCount > 0 ? Math.round((prog.processedCount / prog.totalCount) * 100) : 0;
 
       await prisma.backgroundJob.update({
@@ -185,8 +175,8 @@ export async function processJob(jobId: string, customWorkerId?: string) {
       result.failed === 0
         ? "COMPLETED"
         : result.successful > 0
-        ? "PARTIAL_FAILURE"
-        : "FAILED";
+          ? "PARTIAL_FAILURE"
+          : "FAILED";
 
     // Update Batch Record
     await prisma.cardGenerationBatch.update({

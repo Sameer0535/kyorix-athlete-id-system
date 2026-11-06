@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { scryptSync, randomBytes, timingSafeEqual, createHmac } from "crypto";
-import { prisma } from "./prisma.ts";
+import { prisma } from "./prisma";
 
 // Ensure secrets are available
 const JWT_SECRET_STRING =

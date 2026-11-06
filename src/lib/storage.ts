@@ -18,12 +18,17 @@ export interface StorageFileResult {
   checksumSha256: string;
 }
 
-// Ensure base private storage directory exists
-const DEFAULT_STORAGE_ROOT = path.resolve(process.cwd(), "storage", "private");
+// Ensure base private storage directory exists (use /tmp on Vercel serverless)
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV !== undefined;
+const DEFAULT_STORAGE_ROOT = isVercel
+  ? path.resolve("/tmp", "storage", "private")
+  : path.resolve(process.cwd(), "storage", "private");
 
 export function getStorageRoot(): string {
   const customRoot = process.env.STORAGE_LOCAL_ROOT;
-  const root = customRoot ? path.resolve(process.cwd(), customRoot) : DEFAULT_STORAGE_ROOT;
+  const root = customRoot
+    ? (isVercel && !path.isAbsolute(customRoot) ? path.resolve("/tmp", customRoot) : path.resolve(process.cwd(), customRoot))
+    : DEFAULT_STORAGE_ROOT;
   if (!fs.existsSync(root)) {
     fs.mkdirSync(root, { recursive: true });
   }
