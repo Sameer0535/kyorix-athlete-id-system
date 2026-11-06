@@ -11,8 +11,6 @@ import {
   CheckCircle,
   Clock,
   Layers,
-  Building,
-  Scale,
   AlertCircle,
   Check,
   FileText,
@@ -21,14 +19,13 @@ import {
   Ban,
   RotateCcw,
   Activity,
-  ChevronRight,
-  ShieldCheck,
 } from "lucide-react";
 
 interface CardRegistrationItem {
   id: string;
   registrationNumber: string;
   approvalStatus: string;
+  cardRole?: string;
   createdAt: string;
   athlete: {
     id: string;
@@ -96,17 +93,24 @@ interface FailedRecord {
   failedAt: string;
 }
 
+const ROLE_BADGES: Record<string, string> = {
+  PARTICIPANT: "bg-blue-50 text-blue-700 border-blue-200",
+  REFEREE: "bg-sky-50 text-sky-700 border-sky-200",
+  COACH: "bg-red-50 text-red-700 border-red-200",
+  STAFF: "bg-amber-50 text-amber-700 border-amber-200",
+};
+
 export default function AdminIdCardsPage() {
   const [activeTab, setActiveTab] = useState<"athletes" | "batches">("athletes");
-
   const [items, setItems] = useState<CardRegistrationItem[]>([]);
+  const [batches, setBatches] = useState<BatchItem[]>([]);
   const [stats, setStats] = useState<Stats>({
     totalApproved: 0,
     cardsGenerated: 0,
     pendingGeneration: 0,
     failedGenerations: 0,
   });
-  const [batches, setBatches] = useState<BatchItem[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -117,34 +121,33 @@ export default function AdminIdCardsPage() {
   const [weightFilter, setWeightFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
 
-  // Options
-  const [academies, setAcademies] = useState<{ id: string; name: string }[]>([]);
-  const [weightCategories, setWeightCategories] = useState<{ id: string; name: string }[]>([]);
-
-  // Selection
+  // Selection for bulk generation
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [actionInProgress, setActionInProgress] = useState(false);
+
+  // Filter options
+  const [academies, setAcademies] = useState<{ id: string; name: string }[]>([]);
+  const [weightCategories, setWeightCategories] = useState<{ id: string; name: string }[]>([]);
 
   // Preview Modal
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
 
-  // Failed Records Inspection Modal
+  // Inspect Failed Records Modal
   const [inspectBatchId, setInspectBatchId] = useState<string | null>(null);
   const [inspectBatchNumber, setInspectBatchNumber] = useState<string>("");
   const [failedRecordsList, setFailedRecordsList] = useState<FailedRecord[]>([]);
   const [loadingFailedRecords, setLoadingFailedRecords] = useState(false);
 
-  // Live active batch progress
+  // Polling for active background jobs
   const [activeBatchJob, setActiveBatchJob] = useState<{
-    batchId: string;
+    id: string;
     batchNumber: string;
     progress: number;
-    total: number;
     status: string;
+    total: number;
   } | null>(null);
-
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -154,11 +157,11 @@ export default function AdminIdCardsPage() {
       if (search.trim()) params.set("search", search.trim());
       if (academyFilter) params.set("academyId", academyFilter);
       if (weightFilter) params.set("weightCategoryId", weightFilter);
-      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (statusFilter !== "ALL") params.set("cardStatus", statusFilter);
 
       const [cardsRes, batchesRes] = await Promise.all([
         fetch(`/api/admin/id-cards?${params.toString()}`),
-        fetch("/api/admin/id-cards/batches?limit=25"),
+        fetch("/api/admin/id-cards/batches"),
       ]);
 
       const cardsJson = await cardsRes.json();
@@ -166,88 +169,91 @@ export default function AdminIdCardsPage() {
 
       if (cardsJson.success) {
         setItems(cardsJson.data.registrations || []);
-        setStats(
-          cardsJson.data.stats || {
-            totalApproved: 0,
-            cardsGenerated: 0,
-            pendingGeneration: 0,
-            failedGenerations: 0,
-          }
-        );
+        setStats(cardsJson.data.stats || {
+          totalApproved: 0,
+          cardsGenerated: 0,
+          pendingGeneration: 0,
+          failedGenerations: 0,
+        });
+        setAcademies(cardsJson.data.academies || []);
+        setWeightCategories(cardsJson.data.weightCategories || []);
       }
 
       if (batchesJson.success) {
         setBatches(batchesJson.data.batches || []);
-
-        // Detect any actively running batch
-        const running = batchesJson.data.batches.find(
+        const active = (batchesJson.data.batches || []).find(
           (b: BatchItem) => b.status === "PROCESSING" || b.status === "QUEUED"
         );
-        if (running) {
+        if (active) {
           setActiveBatchJob({
-            batchId: running.id,
-            batchNumber: running.batchNumber,
-            progress: running.jobProgress,
-            total: running.totalCards,
-            status: running.status,
+            id: active.id,
+            batchNumber: active.batchNumber,
+            progress: active.jobProgress,
+            status: active.status,
+            total: active.totalCards,
           });
         } else {
           setActiveBatchJob(null);
         }
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Error loading card management data.");
+      setError(err instanceof Error ? err.message : "Error fetching card records.");
     } finally {
       setLoading(false);
     }
   }, [search, academyFilter, weightFilter, statusFilter]);
 
-  // Periodic polling when batch is active
-  useEffect(() => {
-    if (activeBatchJob) {
-      pollingRef.current = setTimeout(() => {
-        fetchData();
-      }, 3000);
-    }
-    return () => {
-      if (pollingRef.current) clearTimeout(pollingRef.current);
-    };
-  }, [activeBatchJob, fetchData]);
-
-  useEffect(() => {
-    async function loadOptions() {
-      try {
-        const res = await fetch("/api/meta/options");
-        const json = await res.json();
-        if (json.success) {
-          setAcademies(json.data.academies || []);
-          setWeightCategories(json.data.weightCategories || []);
-        }
-      } catch {
-        // ignore
-      }
-    }
-    loadOptions();
-  }, []);
-
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Checkbox handlers
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(items.map((i) => i.id));
+  // Polling effect
+  useEffect(() => {
+    if (activeBatchJob) {
+      pollTimerRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/admin/id-cards/batches/${activeBatchJob.id}`);
+          const json = await res.json();
+          if (res.ok && json.success) {
+            const b = json.data.batch;
+            setActiveBatchJob({
+              id: b.id,
+              batchNumber: b.batchNumber,
+              progress: b.jobProgress,
+              status: b.status,
+              total: b.totalCards,
+            });
+            if (b.status === "COMPLETED" || b.status === "FAILED" || b.status === "PARTIAL_FAILURE") {
+              fetchData();
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }, 2500);
     } else {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    }
+
+    return () => {
+      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    };
+  }, [activeBatchJob, fetchData]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === items.length) {
       setSelectedIds([]);
+    } else {
+      setSelectedIds(items.map((i) => i.id));
     }
   };
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  };
-
-  // Individual Generate
   const handleGenerateSingle = async (item: CardRegistrationItem) => {
     setActionInProgress(true);
     setError(null);
@@ -260,20 +266,19 @@ export default function AdminIdCardsPage() {
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error?.message || "Generation failed.");
 
-      setSuccessMsg(json.data.message || `Card generated for ${item.athlete.fullName}.`);
+      setSuccessMsg(`ID Card ${json.data.cardNumber} generated for ${item.athlete.fullName}.`);
       fetchData();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to generate card.");
+      setError(err instanceof Error ? err.message : "ID Card generation failed.");
     } finally {
       setActionInProgress(false);
     }
   };
 
-  // Bulk Generate (Asynchronous Background Job)
   const handleBulkGenerate = async () => {
     const idsToGenerate = selectedIds.length > 0 ? selectedIds : items.map((i) => i.id);
     if (idsToGenerate.length === 0) {
-      alert("No approved athletes available for bulk card generation.");
+      alert("No approved athletes available for bulk generation.");
       return;
     }
 
@@ -305,7 +310,6 @@ export default function AdminIdCardsPage() {
     }
   };
 
-  // Cancel Batch Job
   const handleCancelBatch = async (batchId: string) => {
     if (!confirm("Are you sure you want to cancel this bulk card generation batch?")) return;
     try {
@@ -321,7 +325,6 @@ export default function AdminIdCardsPage() {
     }
   };
 
-  // Inspect Failed Records
   const handleInspectFailed = async (batch: BatchItem) => {
     setInspectBatchId(batch.id);
     setInspectBatchNumber(batch.batchNumber);
@@ -339,7 +342,6 @@ export default function AdminIdCardsPage() {
     }
   };
 
-  // Retry Failed Records
   const handleRetryFailed = async (batchId: string) => {
     if (!confirm("Queue a retry batch for all failed athlete records?")) return;
     try {
@@ -362,24 +364,24 @@ export default function AdminIdCardsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <AdminNav />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold text-cyan-400 uppercase tracking-wider">
-                Phase 4 Enterprise Batch Production
+              <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
+                Accreditation Engine
               </span>
             </div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <CreditCard className="w-6 h-6 text-red-500" />
-              Athlete ID Card Generation & Batch Processing
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+              Athlete ID Card Generation & Bulk Production
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Produce standard 85.6mm × 54mm landscape CR80 credentials with dual export (Combined PDF & ZIP Archive).
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Produce official championship credentials in 4 role formats (Participant, Referee, Coach, Staff) with dual export (Combined PDF & ZIP).
             </p>
           </div>
 
@@ -387,7 +389,7 @@ export default function AdminIdCardsPage() {
             <button
               onClick={handleBulkGenerate}
               disabled={actionInProgress || items.length === 0}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 text-xs font-semibold text-white transition shadow-lg shadow-red-950/40"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-xs font-bold text-white transition shadow-md shadow-blue-600/20"
             >
               <Printer className="w-4 h-4" />
               {selectedIds.length > 0
@@ -399,27 +401,27 @@ export default function AdminIdCardsPage() {
 
         {/* Live Active Batch Banner */}
         {activeBatchJob && (
-          <div className="bg-cyan-950/60 border border-cyan-500/50 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 animate-pulse">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Activity className="w-5 h-5 text-cyan-400 shrink-0" />
+              <Activity className="w-5 h-5 text-blue-600 shrink-0 animate-spin" />
               <div>
-                <div className="text-xs font-bold text-cyan-300">
+                <div className="text-xs font-bold text-blue-800">
                   Background Batch Processing: {activeBatchJob.batchNumber}
                 </div>
-                <div className="text-[11px] text-slate-300">
+                <div className="text-[11px] text-slate-600">
                   Status: <strong>{activeBatchJob.status}</strong> &bull; Total: {activeBatchJob.total} cards
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-4 w-full sm:w-64">
-              <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-cyan-500/30">
+              <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                 <div
-                  className="bg-cyan-400 h-2.5 rounded-full transition-all duration-500"
+                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
                   style={{ width: `${Math.max(activeBatchJob.progress, 5)}%` }}
                 />
               </div>
-              <span className="text-xs font-mono font-bold text-cyan-400 shrink-0">
+              <span className="text-xs font-mono font-bold text-blue-700 shrink-0">
                 {activeBatchJob.progress}%
               </span>
             </div>
@@ -428,64 +430,64 @@ export default function AdminIdCardsPage() {
 
         {/* Notices */}
         {error && (
-          <div className="p-4 bg-red-950/80 border border-red-800 text-red-200 rounded-xl text-xs sm:text-sm flex items-center justify-between">
+          <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs sm:text-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
               <span>{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-slate-400 hover:text-white text-xs">&times;</button>
+            <button onClick={() => setError(null)} className="text-red-700 hover:text-slate-900 text-xs">&times;</button>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-4 bg-emerald-950/80 border border-emerald-800 text-emerald-200 rounded-xl text-xs sm:text-sm flex items-center justify-between">
+          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs sm:text-sm flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{successMsg}</span>
             </div>
-            <button onClick={() => setSuccessMsg(null)} className="text-slate-400 hover:text-white text-xs">&times;</button>
+            <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 hover:text-slate-900 text-xs">&times;</button>
           </div>
         )}
 
         {/* Metric Tiles */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 mb-1">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" /> Total Approved
+          <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <div className="text-xs text-slate-500 flex items-center gap-1.5 mb-1 font-semibold">
+              <CheckCircle className="w-3.5 h-3.5 text-emerald-600" /> Total Approved
             </div>
-            <div className="text-2xl font-bold text-white">{stats.totalApproved}</div>
+            <div className="text-2xl font-extrabold text-slate-900">{stats.totalApproved}</div>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 mb-1">
-              <Printer className="w-3.5 h-3.5 text-cyan-400" /> Cards Generated
+          <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <div className="text-xs text-slate-500 flex items-center gap-1.5 mb-1 font-semibold">
+              <Printer className="w-3.5 h-3.5 text-blue-600" /> Cards Generated
             </div>
-            <div className="text-2xl font-bold text-cyan-400">{stats.cardsGenerated}</div>
+            <div className="text-2xl font-extrabold text-blue-600">{stats.cardsGenerated}</div>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 mb-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" /> Pending Generation
+          <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <div className="text-xs text-slate-500 flex items-center gap-1.5 mb-1 font-semibold">
+              <Clock className="w-3.5 h-3.5 text-amber-600" /> Pending Generation
             </div>
-            <div className="text-2xl font-bold text-amber-400">{stats.pendingGeneration}</div>
+            <div className="text-2xl font-extrabold text-amber-600">{stats.pendingGeneration}</div>
           </div>
 
-          <div className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl">
-            <div className="text-xs text-slate-400 flex items-center gap-1.5 mb-1">
-              <Archive className="w-3.5 h-3.5 text-purple-400" /> Batch Archives
+          <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+            <div className="text-xs text-slate-500 flex items-center gap-1.5 mb-1 font-semibold">
+              <Archive className="w-3.5 h-3.5 text-purple-600" /> Batch Archives
             </div>
-            <div className="text-2xl font-bold text-purple-400">{batches.length}</div>
+            <div className="text-2xl font-extrabold text-purple-600">{batches.length}</div>
           </div>
         </div>
 
         {/* View Tabs */}
-        <div className="flex border-b border-slate-800 gap-2">
+        <div className="flex border-b border-slate-200 gap-2">
           <button
             onClick={() => setActiveTab("athletes")}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
               activeTab === "athletes"
-                ? "border-red-500 text-white"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             <CreditCard className="w-4 h-4" />
@@ -495,8 +497,8 @@ export default function AdminIdCardsPage() {
             onClick={() => setActiveTab("batches")}
             className={`px-4 py-2.5 text-xs font-bold border-b-2 transition flex items-center gap-2 ${
               activeTab === "batches"
-                ? "border-cyan-500 text-cyan-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -508,7 +510,7 @@ export default function AdminIdCardsPage() {
         {activeTab === "athletes" && (
           <div className="space-y-4">
             {/* Filter Bar */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between shadow-sm">
               <div className="flex-1 flex flex-col sm:flex-row gap-2">
                 <div className="relative flex-1">
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
@@ -517,14 +519,14 @@ export default function AdminIdCardsPage() {
                     placeholder="Search Kukkiwon ID or Athlete Name..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white"
                   />
                 </div>
 
                 <select
                   value={academyFilter}
                   onChange={(e) => setAcademyFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500"
+                  className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
                 >
                   <option value="">All Academies</option>
                   {academies.map((a) => (
@@ -535,7 +537,7 @@ export default function AdminIdCardsPage() {
                 <select
                   value={weightFilter}
                   onChange={(e) => setWeightFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500"
+                  className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
                 >
                   <option value="">All Weight Categories</option>
                   {weightCategories.map((w) => (
@@ -546,7 +548,7 @@ export default function AdminIdCardsPage() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500"
+                  className="bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
                 >
                   <option value="ALL">All Card Statuses</option>
                   <option value="GENERATED">Generated Only</option>
@@ -557,45 +559,46 @@ export default function AdminIdCardsPage() {
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition border border-slate-200"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
                 Refresh
               </button>
             </div>
 
             {/* Table */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200">
                     <tr>
                       <th className="p-3 w-8">
                         <input
                           type="checkbox"
                           onChange={handleSelectAll}
                           checked={items.length > 0 && selectedIds.length === items.length}
-                          className="rounded bg-slate-900 border-slate-700 text-red-600 focus:ring-0"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                         />
                       </th>
                       <th className="p-3">Athlete</th>
                       <th className="p-3">Kukkiwon ID</th>
+                      <th className="p-3">Role / Template</th>
                       <th className="p-3">Academy</th>
                       <th className="p-3">Weight Category</th>
                       <th className="p-3">Card Status</th>
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-100">
                     {loading ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-500">
+                        <td colSpan={8} className="p-8 text-center text-slate-400">
                           Loading approved athletes...
                         </td>
                       </tr>
                     ) : items.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-8 text-center text-slate-500">
+                        <td colSpan={8} className="p-8 text-center text-slate-400">
                           No approved athletes found matching filters.
                         </td>
                       </tr>
@@ -603,12 +606,14 @@ export default function AdminIdCardsPage() {
                       items.map((item) => {
                         const isSelected = selectedIds.includes(item.id);
                         const isGenerated = item.idCard?.status === "GENERATED";
+                        const roleKey = (item.cardRole || "PARTICIPANT").toUpperCase();
+                        const badgeClass = ROLE_BADGES[roleKey] || ROLE_BADGES.PARTICIPANT;
 
                         return (
                           <tr
                             key={item.id}
-                            className={`hover:bg-slate-800/40 transition ${
-                              isSelected ? "bg-red-950/20" : ""
+                            className={`hover:bg-slate-50/80 transition ${
+                              isSelected ? "bg-blue-50/60" : ""
                             }`}
                           >
                             <td className="p-3">
@@ -616,35 +621,40 @@ export default function AdminIdCardsPage() {
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => handleToggleSelect(item.id)}
-                                className="rounded bg-slate-900 border-slate-700 text-red-600 focus:ring-0"
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                               />
                             </td>
-                            <td className="p-3 font-semibold text-white">
+                            <td className="p-3 font-bold text-slate-900">
                               <div>{item.athlete.fullName}</div>
-                              <div className="text-[10px] text-slate-400 font-normal">
-                                {item.athlete.danOrPoom || "Registered Athlete"} &bull; {item.registrationNumber}
+                              <div className="text-[10px] text-slate-500 font-normal">
+                                {item.athlete.danOrPoom || "Registered Competitor"} &bull; {item.registrationNumber}
                               </div>
                             </td>
-                            <td className="p-3 font-mono text-cyan-400 font-bold">
+                            <td className="p-3 font-mono text-blue-600 font-bold">
                               {item.athlete.kukkiwonId}
                             </td>
-                            <td className="p-3 text-slate-300">
-                              <div>{item.academy.name}</div>
+                            <td className="p-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-extrabold border ${badgeClass}`}>
+                                {roleKey}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-700">
+                              <div className="font-semibold text-slate-900">{item.academy.name}</div>
                               <div className="text-[10px] text-slate-500">{item.academy.city}</div>
                             </td>
-                            <td className="p-3 text-slate-300">
-                              <div>{item.weightCategory.name}</div>
+                            <td className="p-3 text-slate-700">
+                              <div className="font-semibold text-slate-900">{item.weightCategory.name}</div>
                               <div className="text-[10px] text-slate-500 uppercase">{item.weightCategory.division}</div>
                             </td>
                             <td className="p-3">
                               {isGenerated ? (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
-                                  <CheckCircle className="w-3 h-3 text-emerald-400" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  <CheckCircle className="w-3 h-3 text-emerald-600" />
                                   {item.idCard?.cardNumber}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
-                                  <Clock className="w-3 h-3 text-amber-400" />
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  <Clock className="w-3 h-3 text-amber-600" />
                                   Pending
                                 </span>
                               )}
@@ -654,18 +664,18 @@ export default function AdminIdCardsPage() {
                                 onClick={() => handleGenerateSingle(item)}
                                 disabled={actionInProgress}
                                 title={isGenerated ? "Regenerate Card" : "Generate Card"}
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-xs font-semibold inline-flex items-center gap-1"
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-xs font-semibold inline-flex items-center gap-1 border border-slate-200"
                               >
-                                <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                                <RefreshCw className="w-3.5 h-3.5 text-blue-600" />
                                 {isGenerated ? "Regen" : "Generate"}
                               </button>
 
                               <button
                                 onClick={() => handleOpenPreview(item)}
-                                title="Preview CR80 Card"
-                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition text-xs font-semibold inline-flex items-center gap-1"
+                                title="Preview Official Card"
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-xs font-semibold inline-flex items-center gap-1 border border-slate-200"
                               >
-                                <Eye className="w-3.5 h-3.5 text-slate-300" />
+                                <Eye className="w-3.5 h-3.5 text-slate-500" />
                                 Preview
                               </button>
 
@@ -673,10 +683,10 @@ export default function AdminIdCardsPage() {
                                 href={`/api/admin/id-cards/download?registrationId=${item.id}`}
                                 download
                                 title="Download PDF"
-                                className="p-1.5 rounded-lg bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 transition text-xs font-semibold inline-flex items-center gap-1"
+                                className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition text-xs font-semibold inline-flex items-center gap-1"
                               >
-                                <Download className="w-3.5 h-3.5 text-emerald-400" />
-                                Download
+                                <Download className="w-3.5 h-3.5 text-blue-600" />
+                                PDF
                               </a>
                             </td>
                           </tr>
@@ -693,13 +703,13 @@ export default function AdminIdCardsPage() {
         {/* TAB 2: Bulk Batches & Background Monitor */}
         {activeTab === "batches" && (
           <div className="space-y-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center justify-between shadow-sm">
               <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-cyan-400" />
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-blue-600" />
                   Background Bulk Processing Batches
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Every batch compiles both an all-in-one multi-page PDF and a structured ZIP archive.
                 </p>
               </div>
@@ -707,17 +717,17 @@ export default function AdminIdCardsPage() {
               <button
                 onClick={fetchData}
                 disabled={loading}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition border border-slate-200"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
                 Refresh
               </button>
             </div>
 
-            <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                  <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider font-bold border-b border-slate-200">
                     <tr>
                       <th className="p-3">Batch Number</th>
                       <th className="p-3">Initiated By</th>
@@ -729,10 +739,10 @@ export default function AdminIdCardsPage() {
                       <th className="p-3 text-right">Downloads & Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-100">
                     {batches.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-8 text-center text-slate-500">
+                        <td colSpan={8} className="p-8 text-center text-slate-400">
                           No bulk generation batches recorded yet.
                         </td>
                       </tr>
@@ -741,71 +751,71 @@ export default function AdminIdCardsPage() {
                         const isProcessing = b.status === "PROCESSING" || b.status === "QUEUED";
 
                         return (
-                          <tr key={b.id} className="hover:bg-slate-800/40 transition">
-                            <td className="p-3 font-mono font-bold text-white">
+                          <tr key={b.id} className="hover:bg-slate-50/80 transition">
+                            <td className="p-3 font-mono font-bold text-slate-900">
                               {b.batchNumber}
                             </td>
-                            <td className="p-3 text-slate-300">{b.initiatedBy}</td>
+                            <td className="p-3 text-slate-700">{b.initiatedBy}</td>
                             <td className="p-3">
                               {b.status === "COMPLETED" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                   Completed
                                 </span>
                               )}
                               {b.status === "PROCESSING" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800 animate-pulse">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
                                   Processing
                                 </span>
                               )}
                               {b.status === "QUEUED" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                                   Queued
                                 </span>
                               )}
                               {b.status === "PARTIAL_FAILURE" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-950 text-orange-300 border border-orange-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-50 text-orange-700 border border-orange-200">
                                   Partial
                                 </span>
                               )}
                               {b.status === "FAILED" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-950 text-red-300 border border-red-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-200">
                                   Failed
                                 </span>
                               )}
                               {b.status === "CANCELLED" && (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                   Cancelled
                                 </span>
                               )}
                             </td>
                             <td className="p-3 w-32">
                               <div className="flex items-center gap-2">
-                                <div className="flex-1 bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                                <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                   <div
                                     className={`h-1.5 rounded-full ${
                                       b.status === "COMPLETED"
                                         ? "bg-emerald-500"
                                         : b.status === "FAILED"
                                         ? "bg-red-500"
-                                        : "bg-cyan-500"
+                                        : "bg-blue-600"
                                     }`}
                                     style={{ width: `${Math.max(b.jobProgress, 5)}%` }}
                                   />
                                 </div>
-                                <span className="text-[10px] font-mono text-slate-400">
+                                <span className="text-[10px] font-mono text-slate-500">
                                   {b.jobProgress}%
                                 </span>
                               </div>
                             </td>
-                            <td className="p-3 font-semibold text-slate-200">{b.totalCards}</td>
+                            <td className="p-3 font-semibold text-slate-800">{b.totalCards}</td>
                             <td className="p-3">
-                              <span className="text-emerald-400 font-bold">{b.successfulCards}</span>
-                              <span className="text-slate-500 mx-1">/</span>
-                              <span className={b.failedCards > 0 ? "text-red-400 font-bold" : "text-slate-500"}>
+                              <span className="text-emerald-600 font-bold">{b.successfulCards}</span>
+                              <span className="text-slate-400 mx-1">/</span>
+                              <span className={b.failedCards > 0 ? "text-red-600 font-bold" : "text-slate-400"}>
                                 {b.failedCards}
                               </span>
                             </td>
-                            <td className="p-3 text-[11px] text-slate-400">
+                            <td className="p-3 text-[11px] text-slate-500">
                               {new Date(b.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                             </td>
                             <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
@@ -813,9 +823,9 @@ export default function AdminIdCardsPage() {
                                 <a
                                   href={`/api/admin/id-cards/batches/${b.id}/download-pdf`}
                                   download
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold transition"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 text-[11px] font-semibold transition border border-slate-200"
                                 >
-                                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                                  <FileText className="w-3.5 h-3.5 text-blue-600" />
                                   Combined PDF
                                 </a>
                               )}
@@ -824,9 +834,9 @@ export default function AdminIdCardsPage() {
                                 <a
                                   href={`/api/admin/id-cards/batches/${b.id}/download-zip`}
                                   download
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-950/60 hover:bg-purple-900 text-purple-200 text-[11px] font-semibold transition border border-purple-800/60"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-purple-50 hover:bg-purple-100 text-purple-700 text-[11px] font-semibold transition border border-purple-200"
                                 >
-                                  <Archive className="w-3.5 h-3.5 text-purple-400" />
+                                  <Archive className="w-3.5 h-3.5 text-purple-600" />
                                   ZIP Archive
                                 </a>
                               )}
@@ -834,9 +844,9 @@ export default function AdminIdCardsPage() {
                               {b.failedCards > 0 && (
                                 <button
                                   onClick={() => handleInspectFailed(b)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-950/60 hover:bg-red-900 text-red-200 text-[11px] font-semibold transition border border-red-800/60"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-semibold transition border border-red-200"
                                 >
-                                  <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                                  <AlertCircle className="w-3.5 h-3.5 text-red-600" />
                                   Failed ({b.failedCards})
                                 </button>
                               )}
@@ -844,9 +854,9 @@ export default function AdminIdCardsPage() {
                               {isProcessing && (
                                 <button
                                   onClick={() => handleCancelBatch(b.id)}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-red-950 text-slate-300 hover:text-red-300 text-[11px] font-semibold transition"
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-700 text-[11px] font-semibold transition border border-slate-200"
                                 >
-                                  <Ban className="w-3.5 h-3.5 text-red-400" />
+                                  <Ban className="w-3.5 h-3.5 text-red-600" />
                                   Cancel
                                 </button>
                               )}
@@ -864,43 +874,43 @@ export default function AdminIdCardsPage() {
 
         {/* Failed Records Modal */}
         {inspectBatchId && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
                     Failed Athlete Records &mdash; {inspectBatchNumber}
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Inspect failure causes and re-queue card generation.
                   </p>
                 </div>
                 <button
                   onClick={() => setInspectBatchId(null)}
-                  className="text-slate-400 hover:text-white text-lg font-bold"
+                  className="text-slate-400 hover:text-slate-600 text-lg font-bold"
                 >
                   &times;
                 </button>
               </div>
 
               {loadingFailedRecords ? (
-                <div className="py-8 text-center text-slate-400 text-xs">Loading failure logs...</div>
+                <div className="py-8 text-center text-slate-500 text-xs">Loading failure logs...</div>
               ) : failedRecordsList.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">No failure details found.</div>
+                <div className="py-8 text-center text-slate-500 text-xs">No failure details found.</div>
               ) : (
                 <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                   {failedRecordsList.map((rec, idx) => (
                     <div
                       key={idx}
-                      className="p-3 bg-slate-950 rounded-xl border border-red-900/40 text-xs flex items-start justify-between gap-4"
+                      className="p-3 bg-slate-50 rounded-xl border border-red-200 text-xs flex items-start justify-between gap-4"
                     >
                       <div>
-                        <div className="font-bold text-white">{rec.athleteName}</div>
-                        <div className="text-[11px] text-cyan-400 font-mono">
+                        <div className="font-bold text-slate-900">{rec.athleteName}</div>
+                        <div className="text-[11px] text-blue-600 font-mono">
                           Kukkiwon ID: {rec.kukkiwonId}
                         </div>
-                        <div className="text-[11px] text-red-300 mt-1">
+                        <div className="text-[11px] text-red-700 mt-1">
                           Reason: {rec.reason}
                         </div>
                       </div>
@@ -912,17 +922,17 @@ export default function AdminIdCardsPage() {
                 </div>
               )}
 
-              <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+              <div className="flex justify-between items-center pt-3 border-t border-slate-100">
                 <button
                   onClick={() => setInspectBatchId(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
                 >
                   Close
                 </button>
 
                 <button
                   onClick={() => handleRetryFailed(inspectBatchId)}
-                  className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-red-950/40"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   Retry All Failed Records
@@ -934,29 +944,29 @@ export default function AdminIdCardsPage() {
 
         {/* Inline PDF Preview Modal */}
         {previewUrl && (
-          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 space-y-3 shadow-2xl">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-                <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <Printer className="w-4 h-4 text-cyan-400" />
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-4 space-y-3 shadow-2xl">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <Printer className="w-4 h-4 text-blue-600" />
                   Print Preview &bull; {previewTitle}
                 </div>
                 <button
                   onClick={() => setPreviewUrl(null)}
-                  className="text-slate-400 hover:text-white text-base font-bold"
+                  className="text-slate-400 hover:text-slate-600 text-base font-bold"
                 >
                   &times;
                 </button>
               </div>
 
-              <div className="w-full h-80 rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+              <div className="w-full h-80 rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
                 <iframe src={previewUrl} title="Card Preview" className="w-full h-full border-0" />
               </div>
 
               <div className="flex justify-end pt-1">
                 <button
                   onClick={() => setPreviewUrl(null)}
-                  className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                  className="px-4 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
                 >
                   Close Preview
                 </button>

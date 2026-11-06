@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
         id: registration.id,
         registrationNumber: registration.registrationNumber,
         approvalStatus: registration.approvalStatus,
+        cardRole: registration.cardRole || "PARTICIPANT",
         athlete: registration.athlete,
         academy: registration.academy,
         weightCategory: registration.weightCategory,

@@ -16,6 +16,7 @@ export interface AthleteCardData {
   division: string;
   photoStorageKey: string;
   photoMimeType?: string;
+  cardRole?: "PARTICIPANT" | "REFEREE" | "COACH" | "STAFF" | string;
   issueDate?: Date;
 }
 
@@ -44,6 +45,10 @@ export const DEFAULT_BRANDING: ChampionshipBrandingConfig = {
 export const CARD_WIDTH_PT = 242.65;
 export const CARD_HEIGHT_PT = 153.07;
 
+// Official Championship Badge Template Dimensions (Portrait aspect ratio ~1:1.4)
+export const PORTRAIT_BADGE_WIDTH_PT = 250;
+export const PORTRAIT_BADGE_HEIGHT_PT = 350;
+
 function hexToRgb(hex: string) {
   const clean = hex.replace("#", "");
   const num = parseInt(clean, 16);
@@ -62,6 +67,12 @@ export async function drawAthleteCard(
   data: AthleteCardData,
   config: ChampionshipBrandingConfig = DEFAULT_BRANDING
 ) {
+  // If an official portrait template role was selected, render onto that template
+  if (data.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(data.cardRole.toUpperCase())) {
+    await drawPortraitTemplateCard(doc, page, data);
+    return;
+  }
+
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const fontMono = await doc.embedFont(StandardFonts.CourierBold);
@@ -387,6 +398,183 @@ export async function drawAthleteCard(
 }
 
 /**
+ * Draws an official championship portrait ID badge onto a template image
+ */
+export async function drawPortraitTemplateCard(
+  doc: PDFDocument,
+  page: any,
+  data: AthleteCardData
+) {
+  const role = (data.cardRole || "PARTICIPANT").toUpperCase();
+  const templateMap: Record<string, string> = {
+    PARTICIPANT: "template-participant.jpg",
+    REFEREE: "template-referee.jpg",
+    COACH: "template-coach.jpg",
+    STAFF: "template-staff.jpg",
+  };
+  const templateFilename = templateMap[role] || "template-participant.jpg";
+
+  // Resolve template file path
+  let templatePath = path.resolve(process.cwd(), "public", "templates", templateFilename);
+  if (!fs.existsSync(templatePath)) {
+    templatePath = path.resolve(process.cwd(), "src", "assets", "templates", templateFilename);
+  }
+
+  const { width: cardWidth, height: cardHeight } = page.getSize();
+
+  // 1. Draw template background image
+  if (fs.existsSync(templatePath)) {
+    const templateBytes = fs.readFileSync(templatePath);
+    const bgImage = await doc.embedJpg(templateBytes);
+    page.drawImage(bgImage, {
+      x: 0,
+      y: 0,
+      width: cardWidth,
+      height: cardHeight,
+    });
+  }
+
+  // 2. Draw Athlete Photograph in designated photo box
+  // In template: x: 60.4%, y: 30% from top, w: 36.5%, h: 24.0%
+  const photoX = cardWidth * 0.604;
+  const photoY = cardHeight * (1 - 0.300 - 0.245);
+  const photoW = cardWidth * 0.365;
+  const photoH = cardHeight * 0.240;
+
+  if (data.photoStorageKey) {
+    try {
+      const { buffer: photoBuffer } = await getPrivateFile(data.photoStorageKey);
+      let embeddedPhoto: any = null;
+      if (
+        (data.photoMimeType && data.photoMimeType.includes("png")) ||
+        photoBuffer.slice(0, 8).toString("hex") === "89504e470d0a1a0a"
+      ) {
+        embeddedPhoto = await doc.embedPng(photoBuffer);
+      } else {
+        embeddedPhoto = await doc.embedJpg(photoBuffer);
+      }
+
+      if (embeddedPhoto) {
+        page.drawRectangle({
+          x: photoX,
+          y: photoY,
+          width: photoW,
+          height: photoH,
+          color: rgb(1, 1, 1),
+        });
+        page.drawImage(embeddedPhoto, {
+          x: photoX + 1.5,
+          y: photoY + 1.5,
+          width: photoW - 3,
+          height: photoH - 3,
+        });
+      }
+    } catch {
+      // Photo fallback
+      page.drawRectangle({
+        x: photoX,
+        y: photoY,
+        width: photoW,
+        height: photoH,
+        color: rgb(0.95, 0.95, 0.95),
+      });
+    }
+  }
+
+  // 3. Load Fonts
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
+
+  const navyColor = rgb(0.04, 0.12, 0.30); // #0A1E4D
+  const darkGray = rgb(0.20, 0.25, 0.30);
+  const goldColor = rgb(0.78, 0.60, 0.15); // #C79A26
+  const blueColor = rgb(0.00, 0.40, 0.85); // #0066D9
+
+  // 4. Render Athlete Details in the open central area
+  let textY = cardHeight * 0.41;
+
+  // ATHLETE FULL NAME (Large Bold)
+  const displayName = (data.fullName || "ATHLETE NAME").toUpperCase();
+  const fontSize = displayName.length > 22 ? 11 : displayName.length > 16 ? 13 : 15;
+  page.drawText(displayName, {
+    x: 18,
+    y: textY,
+    size: fontSize,
+    font: fontBold,
+    color: navyColor,
+  });
+
+  textY -= 14;
+  // Kukkiwon ID Badge
+  page.drawRectangle({
+    x: 18,
+    y: textY - 2,
+    width: 140,
+    height: 14,
+    color: rgb(0.92, 0.95, 1.0),
+    borderColor: blueColor,
+    borderWidth: 0.75,
+  });
+  page.drawText(`KUKKIWON ID: ${data.kukkiwonId || "UNVERIFIED"}`, {
+    x: 22,
+    y: textY + 1.5,
+    size: 7.5,
+    font: fontBold,
+    color: blueColor,
+  });
+
+  textY -= 16;
+  // Academy Name
+  page.drawText("ACADEMY / CLUB", {
+    x: 18,
+    y: textY,
+    size: 6.5,
+    font: fontBold,
+    color: goldColor,
+  });
+  textY -= 10;
+  const acadName = data.academyName || "Independent Academy";
+  const acadFontSize = acadName.length > 28 ? 6.5 : 7.5;
+  page.drawText(acadName, {
+    x: 18,
+    y: textY,
+    size: acadFontSize,
+    font: fontBold,
+    color: navyColor,
+  });
+
+  textY -= 14;
+  // Weight & Division / Role
+  page.drawText("CATEGORY & DIVISION", {
+    x: 18,
+    y: textY,
+    size: 6.5,
+    font: fontBold,
+    color: goldColor,
+  });
+  textY -= 10;
+  const catText = `${data.weightCategoryName || "Senior"}${data.danOrPoom ? ` • ${data.danOrPoom}` : ""}`;
+  page.drawText(catText, {
+    x: 18,
+    y: textY,
+    size: 7.5,
+    font: fontRegular,
+    color: darkGray,
+  });
+
+  textY -= 14;
+  // Card & Registration Reference
+  const refText = `REG: ${data.registrationNumber}  |  CARD: ${data.cardNumber}`;
+  page.drawText(refText, {
+    x: 18,
+    y: textY,
+    size: 6,
+    font: fontBold,
+    color: darkGray,
+  });
+}
+
+/**
  * Generates an individual PDF document for a single athlete ID card
  */
 export async function generateIndividualCardPdf(
@@ -396,8 +584,12 @@ export async function generateIndividualCardPdf(
   const mergedConfig = { ...DEFAULT_BRANDING, ...config };
   const doc = await PDFDocument.create();
 
-  // Create page with exact CR80 landscape dimensions
-  const page = doc.addPage([CARD_WIDTH_PT, CARD_HEIGHT_PT]);
+  // If a portrait official template was selected, use portrait dimensions
+  const isPortraitRole = data.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(data.cardRole.toUpperCase());
+  const pageWidth = isPortraitRole ? PORTRAIT_BADGE_WIDTH_PT : CARD_WIDTH_PT;
+  const pageHeight = isPortraitRole ? PORTRAIT_BADGE_HEIGHT_PT : CARD_HEIGHT_PT;
+
+  const page = doc.addPage([pageWidth, pageHeight]);
 
   await drawAthleteCard(doc, page, data, mergedConfig);
 
@@ -424,7 +616,10 @@ export async function generateBulkCardsPdf(
   for (let i = 0; i < cardsData.length; i++) {
     const cardData = cardsData[i];
     try {
-      const page = doc.addPage([CARD_WIDTH_PT, CARD_HEIGHT_PT]);
+      const isPortrait = cardData.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(cardData.cardRole.toUpperCase());
+      const pW = isPortrait ? PORTRAIT_BADGE_WIDTH_PT : CARD_WIDTH_PT;
+      const pH = isPortrait ? PORTRAIT_BADGE_HEIGHT_PT : CARD_HEIGHT_PT;
+      const page = doc.addPage([pW, pH]);
       await drawAthleteCard(doc, page, cardData, mergedConfig);
       if (onProgress) {
         onProgress(i + 1, cardsData.length);

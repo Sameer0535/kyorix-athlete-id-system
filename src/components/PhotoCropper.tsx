@@ -4,11 +4,16 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ZoomIn, ZoomOut, RotateCcw, Check, Upload, AlertCircle } from "lucide-react";
 
 interface PhotoCropperProps {
-  onPhotoCropped: (file: File, previewUrl: string) => void;
+  onPhotoCropped?: (file: File, previewUrl: string) => void;
+  onCropComplete?: (file: File, previewUrl: string) => void;
   currentPreview?: string | null;
 }
 
-export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCropperProps) {
+export default function PhotoCropper({
+  onPhotoCropped,
+  onCropComplete,
+  currentPreview,
+}: PhotoCropperProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [isCropping, setIsCropping] = useState(false);
@@ -157,7 +162,10 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
           type: "image/jpeg",
         });
         const previewUrl = URL.createObjectURL(blob);
-        onPhotoCropped(croppedFile, previewUrl);
+        const callback = onPhotoCropped || onCropComplete;
+        if (callback) {
+          callback(croppedFile, previewUrl);
+        }
         setIsCropping(false);
       },
       "image/jpeg",
@@ -168,25 +176,25 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
   return (
     <div className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-950/60 border border-red-800 rounded-xl flex items-center gap-2 text-xs text-red-300">
-          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+        <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
           <span>{error}</span>
         </div>
       )}
 
       {isCropping ? (
-        <div className="bg-slate-950 border border-blue-500/40 rounded-2xl p-4 flex flex-col items-center space-y-4 shadow-2xl">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center space-y-4 shadow-xl">
           <div className="text-center">
-            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">
               Position & Crop Athlete Portrait
             </span>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-slate-500 mt-0.5">
               Drag to position athlete face within the guideline oval. Use zoom slider for precise framing.
             </p>
           </div>
 
           <div
-            className="relative border-2 border-dashed border-blue-500/60 rounded-xl overflow-hidden cursor-move shadow-inner"
+            className="relative border-2 border-dashed border-blue-500 rounded-xl overflow-hidden cursor-move shadow-inner bg-slate-900"
             style={{ width: CROP_WIDTH, height: CROP_HEIGHT }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
@@ -211,7 +219,7 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
               step="0.05"
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
             />
             <ZoomIn className="w-4 h-4 text-slate-400" />
           </div>
@@ -224,7 +232,7 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
                 setZoom(1);
                 setOffset({ x: 0, y: 0 });
               }}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 hover:text-white transition"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-700 hover:bg-slate-200 transition font-semibold"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset
@@ -232,7 +240,7 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
             <button
               type="button"
               onClick={handleApplyCrop}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-semibold text-white transition shadow-lg shadow-blue-950/40"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition shadow-sm"
             >
               <Check className="w-3.5 h-3.5" />
               Confirm Crop
@@ -241,28 +249,28 @@ export default function PhotoCropper({ onPhotoCropped, currentPreview }: PhotoCr
         </div>
       ) : (
         <div className="flex flex-col sm:flex-row gap-5 items-center">
-          <div className="w-32 h-40 bg-slate-950 border-2 border-slate-800 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-md relative group">
+          <div className="w-32 h-40 bg-slate-50 border-2 border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
             {currentPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={currentPreview} alt="Athlete Portrait" className="w-full h-full object-cover" />
             ) : (
-              <div className="text-center p-3 text-slate-500 text-[11px] leading-tight">
+              <div className="text-center p-3 text-slate-400 text-[11px] leading-tight">
                 No photo selected
               </div>
             )}
           </div>
 
           <div className="flex-1 w-full space-y-2">
-            <label className="block text-xs font-semibold text-slate-300">
-              Upload Official Portrait Photograph <span className="text-red-400">*</span>
+            <label className="block text-xs font-semibold text-slate-700">
+              Upload Official Portrait Photograph <span className="text-red-500">*</span>
             </label>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleFileChange}
-              className="w-full text-xs text-slate-400 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"
+              className="w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
             />
-            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
               <span>Supports JPEG, PNG, WebP (Max 5MB)</span>
               <span>&bull;</span>
               <span>Includes interactive crop & alignment</span>

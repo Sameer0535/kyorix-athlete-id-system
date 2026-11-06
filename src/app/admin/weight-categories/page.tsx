@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import AdminNav from "@/components/AdminNav";
-import { Scale, Plus, Edit2, CheckCircle, XCircle, Users, AlertCircle, Filter } from "lucide-react";
+import { Scale, Plus, Edit2, CheckCircle, AlertCircle, Filter } from "lucide-react";
 
 interface CategoryItem {
   id: string;
@@ -84,7 +84,7 @@ export default function AdminWeightCategoriesPage() {
     setFormName(c.name);
     setFormDivision(c.division);
     setFormGender(c.gender);
-    setFormMinWeight(c.minWeightKg !== null && c.minWeightKg !== undefined ? String(c.minWeightKg) : "");
+    setFormMinWeight(c.minWeightKg ? String(c.minWeightKg) : "");
     setFormMaxWeight(String(c.maxWeightKg));
     setFormActive(c.isActive);
     setModalOpen(true);
@@ -97,8 +97,8 @@ export default function AdminWeightCategoriesPage() {
 
     try {
       const payload = {
-        code: formCode.trim().toUpperCase(),
-        name: formName.trim(),
+        code: formCode,
+        name: formName,
         division: formDivision,
         gender: formGender,
         minWeightKg: formMinWeight ? parseFloat(formMinWeight) : null,
@@ -116,9 +116,9 @@ export default function AdminWeightCategoriesPage() {
       });
 
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error?.message || "Failed to save category.");
+      if (!res.ok || !json.success) throw new Error(json.error?.message || "Operation failed.");
 
-      setSuccessMsg(editingId ? "Weight category updated." : "Weight category created.");
+      setSuccessMsg(editingId ? "Category updated successfully." : "Category created successfully.");
       setModalOpen(false);
       fetchCategories();
     } catch (err: unknown) {
@@ -129,24 +129,24 @@ export default function AdminWeightCategoriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       <AdminNav />
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Scale className="w-6 h-6 text-red-500" />
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <Scale className="w-6 h-6 text-blue-600" />
               Weight Category Configuration
             </h1>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Configure tournament weight classes, age divisions, and weight limits without modifying application code.
             </p>
           </div>
 
           <button
             onClick={handleOpenAdd}
-            className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition shadow-lg shadow-red-950/40"
+            className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Add Weight Category
@@ -154,48 +154,48 @@ export default function AdminWeightCategoriesPage() {
         </div>
 
         {successMsg && (
-          <div className="p-3 bg-emerald-950/60 border border-emerald-800 rounded-xl flex items-center justify-between text-xs text-emerald-300">
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-800">
             <span className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
               {successMsg}
             </span>
-            <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-white">✕</button>
+            <button onClick={() => setSuccessMsg(null)} className="text-emerald-700 hover:text-slate-900">✕</button>
           </div>
         )}
 
         {error && (
-          <div className="p-3 bg-red-950/60 border border-red-800 rounded-xl flex items-center gap-2 text-xs text-red-300">
-            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <div className="text-[11px] font-semibold text-slate-400 uppercase">Configured Categories</div>
-            <div className="text-2xl font-bold text-white mt-1">{stats.total}</div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Configured Categories</div>
+            <div className="text-2xl font-extrabold text-slate-900 mt-1">{stats.total}</div>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <div className="text-[11px] font-semibold text-emerald-400 uppercase">Active Categories</div>
-            <div className="text-2xl font-bold text-emerald-300 mt-1">{stats.active}</div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Active Categories</div>
+            <div className="text-2xl font-extrabold text-slate-900 mt-1">{stats.active}</div>
           </div>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-            <div className="text-[11px] font-semibold text-slate-500 uppercase">Disabled / Inactive</div>
-            <div className="text-2xl font-bold text-slate-400 mt-1">{stats.inactive}</div>
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Disabled / Inactive</div>
+            <div className="text-2xl font-extrabold text-slate-500 mt-1">{stats.inactive}</div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold">
-            <Filter className="w-3.5 h-3.5" /> Filter by:
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap gap-3 items-center shadow-sm">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-bold uppercase tracking-wider">
+            <Filter className="w-3.5 h-3.5 text-blue-600" /> Filter by:
           </div>
 
           <select
             value={divisionFilter}
             onChange={(e) => setDivisionFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
+            className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="">All Divisions</option>
             <option value="SENIOR">Senior Division</option>
@@ -207,7 +207,7 @@ export default function AdminWeightCategoriesPage() {
           <select
             value={genderFilter}
             onChange={(e) => setGenderFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-red-500"
+            className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
           >
             <option value="">All Genders</option>
             <option value="MALE">Male</option>
@@ -220,7 +220,7 @@ export default function AdminWeightCategoriesPage() {
                 setDivisionFilter("");
                 setGenderFilter("");
               }}
-              className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-slate-800"
+              className="text-xs text-slate-600 hover:text-blue-600 px-2 py-1 rounded hover:bg-slate-100 font-semibold"
             >
               Reset
             </button>
@@ -228,21 +228,21 @@ export default function AdminWeightCategoriesPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3.5 px-4">Code</th>
-                <th className="py-3.5 px-4">Category Name</th>
-                <th className="py-3.5 px-4">Division</th>
-                <th className="py-3.5 px-4">Gender</th>
-                <th className="py-3.5 px-4">Weight Limits</th>
-                <th className="py-3.5 px-4">Athletes</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+              <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
+                <th className="py-3 px-4">Code</th>
+                <th className="py-3 px-4">Category Name</th>
+                <th className="py-3 px-4">Division</th>
+                <th className="py-3 px-4">Gender</th>
+                <th className="py-3 px-4">Weight Limits</th>
+                <th className="py-3 px-4">Athletes</th>
+                <th className="py-3 px-4">Status</th>
+                <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-slate-400">Loading categories...</td>
@@ -253,30 +253,30 @@ export default function AdminWeightCategoriesPage() {
                 </tr>
               ) : (
                 categories.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-800/30 transition">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-300">{c.code}</td>
-                    <td className="py-3 px-4 font-bold text-white">{c.name}</td>
+                  <tr key={c.id} className="hover:bg-slate-50/80 transition">
+                    <td className="py-3 px-4 font-mono font-bold text-blue-600">{c.code}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">{c.name}</td>
                     <td className="py-3 px-4">
-                      <span className="bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-[11px] text-slate-300">
+                      <span className="bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-[11px] font-semibold text-slate-700">
                         {c.division}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-300">{c.gender}</td>
-                    <td className="py-3 px-4 text-blue-400 font-medium">
+                    <td className="py-3 px-4 text-slate-700">{c.gender}</td>
+                    <td className="py-3 px-4 text-blue-600 font-semibold">
                       {c.maxWeightKg >= 999
                         ? `Over ${c.minWeightKg} kg`
                         : c.minWeightKg
                         ? `${c.minWeightKg} kg – ${c.maxWeightKg} kg`
                         : `Up to ${c.maxWeightKg} kg`}
                     </td>
-                    <td className="py-3 px-4 font-semibold text-slate-200">{c._count.registrations}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">{c._count.registrations}</td>
                     <td className="py-3 px-4">
                       {c.isActive ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-400 text-[11px] font-semibold bg-emerald-950/60 border border-emerald-800 px-2 py-0.5 rounded-full">
-                          <CheckCircle className="w-3 h-3" /> Active
+                        <span className="inline-flex items-center gap-1 text-emerald-700 text-[11px] font-bold bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" /> Active
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-slate-400 text-[11px] font-semibold bg-slate-800 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-slate-500 text-[11px] font-semibold bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full">
                           Inactive
                         </span>
                       )}
@@ -284,7 +284,7 @@ export default function AdminWeightCategoriesPage() {
                     <td className="py-3 px-4 text-right">
                       <button
                         onClick={() => handleOpenEdit(c)}
-                        className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
+                        className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition"
                         title="Edit Category"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -300,48 +300,48 @@ export default function AdminWeightCategoriesPage() {
 
       {/* Add / Edit Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center pb-3 border-b border-slate-800">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Scale className="w-4 h-4 text-red-500" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-blue-600" />
                 {editingId ? "Edit Weight Category" : "Add Weight Category"}
               </h3>
-              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-white text-sm">✕</button>
+              <button onClick={() => setModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Category Code <span className="text-red-400">*</span></label>
+                <label className="block font-semibold text-slate-700 mb-1">Category Code <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   required
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                   placeholder="e.g. SR_M_U58 or JR_F_U49"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono uppercase focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 font-mono uppercase focus:outline-none focus:border-blue-600 focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-300 mb-1">Category Display Name <span className="text-red-400">*</span></label>
+                <label className="block font-semibold text-slate-700 mb-1">Category Display Name <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="e.g. Senior Male Under 58kg (Flyweight)"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Division <span className="text-red-400">*</span></label>
+                  <label className="block font-semibold text-slate-700 mb-1">Division <span className="text-red-500">*</span></label>
                   <select
                     value={formDivision}
                     onChange={(e) => setFormDivision(e.target.value as "SENIOR" | "JUNIOR" | "CADET" | "SUB_CADET")}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
                   >
                     <option value="SENIOR">Senior</option>
                     <option value="JUNIOR">Junior</option>
@@ -351,11 +351,11 @@ export default function AdminWeightCategoriesPage() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Gender <span className="text-red-400">*</span></label>
+                  <label className="block font-semibold text-slate-700 mb-1">Gender <span className="text-red-500">*</span></label>
                   <select
                     value={formGender}
                     onChange={(e) => setFormGender(e.target.value as "MALE" | "FEMALE")}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white font-medium"
                   >
                     <option value="MALE">Male</option>
                     <option value="FEMALE">Female</option>
@@ -365,18 +365,18 @@ export default function AdminWeightCategoriesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Min Weight (kg)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Min Weight (kg)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formMinWeight}
                     onChange={(e) => setFormMinWeight(e.target.value)}
                     placeholder="e.g. 54"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Max Weight (kg) <span className="text-red-400">*</span></label>
+                  <label className="block font-semibold text-slate-700 mb-1">Max Weight (kg) <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     step="0.1"
@@ -384,7 +384,7 @@ export default function AdminWeightCategoriesPage() {
                     value={formMaxWeight}
                     onChange={(e) => setFormMaxWeight(e.target.value)}
                     placeholder="e.g. 58 (999 for Heavy)"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:bg-white"
                   />
                 </div>
               </div>
@@ -395,25 +395,25 @@ export default function AdminWeightCategoriesPage() {
                   id="catActive"
                   checked={formActive}
                   onChange={(e) => setFormActive(e.target.checked)}
-                  className="rounded border-slate-800 text-red-600 focus:ring-0 bg-slate-950 w-4 h-4"
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
                 />
-                <label htmlFor="catActive" className="text-slate-300 font-semibold cursor-pointer">
+                <label htmlFor="catActive" className="text-slate-700 font-semibold cursor-pointer">
                   Category is active for registrations
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-sm"
                 >
                   {saving ? "Saving..." : editingId ? "Save Changes" : "Create Category"}
                 </button>
@@ -425,4 +425,3 @@ export default function AdminWeightCategoriesPage() {
     </div>
   );
 }
-

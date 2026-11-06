@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
         fullName: athlete.fullName,
         gender: athlete.gender,
         danOrPoom: athlete.danOrPoom,
+        cardRole: latestRegistration?.cardRole || "PARTICIPANT",
         academyName: athlete.academy.name,
         academyCity: athlete.academy.city,
         registrationStatus: latestRegistration?.approvalStatus || "UNREGISTERED",

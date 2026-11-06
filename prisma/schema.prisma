@@ -239,6 +239,7 @@ model Registration {
   // Athlete self-service access token (hashed for security, plaintext never exposed from DB)
   athleteAccessToken     String?        @unique
   athleteAccessTokenHash String?        @unique
+  cardRole               String         @default("PARTICIPANT") // PARTICIPANT, REFEREE, COACH, STAFF
   notes                  String?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
@@ -265,6 +266,7 @@ model IdCardRecord {
   athlete                Athlete      @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   
   status                 IdCardStatus @default(PENDING_GENERATION)
+  cardRole               String       @default("PARTICIPANT")
   cardTemplateVersion    String       @default("v1.0")
   generatedFileKey       String?      // Private storage key for generated PDF
   generatedFileSizeBytes Int?

@@ -19,6 +19,10 @@ export async function POST(req: NextRequest) {
     const contactPhone = (formData.get("contactPhone") as string) || null;
     const contactEmail = (formData.get("contactEmail") as string) || null;
     const photoFile = formData.get("photo") as File | null;
+    const cardRoleRaw = ((formData.get("cardRole") as string) || "PARTICIPANT").toUpperCase();
+    const cardRole = ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(cardRoleRaw)
+      ? cardRoleRaw
+      : "PARTICIPANT";
 
     // 1. Validation
     if (!kukkiwonIdRaw || !fullName || !academyId || !weightCategoryId) {
@@ -124,10 +128,11 @@ export async function POST(req: NextRequest) {
           weightCategoryId: weightCategory.id,
           approvalStatus: "PENDING_REVIEW",
           athleteAccessTokenHash,
+          cardRole,
         },
       });
 
-      return { athlete, photograph, registration };
+      return { athlete, photograph, registration, athleteAccessToken };
     });
 
     // 6. Log audit event
@@ -157,7 +162,8 @@ export async function POST(req: NextRequest) {
         academyName: academy.name,
         weightCategoryName: weightCategory.name,
         approvalStatus: result.registration.approvalStatus,
-        athleteAccessToken: result.registration.athleteAccessToken,
+        athleteAccessToken: result.athleteAccessToken,
+        cardRole: result.registration.cardRole,
         message: "Registration submitted successfully. Awaiting administrative review.",
       },
       201

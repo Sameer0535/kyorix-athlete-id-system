@@ -3,7 +3,14 @@ import { PDFDocument } from "pdf-lib";
 import crypto from "crypto";
 import { prisma } from "../prisma";
 import { savePrivateFile, getPrivateFile } from "../storage";
-import { drawAthleteCard, type AthleteCardData, CARD_WIDTH_PT, CARD_HEIGHT_PT } from "../pdf-generator";
+import {
+  drawAthleteCard,
+  type AthleteCardData,
+  CARD_WIDTH_PT,
+  CARD_HEIGHT_PT,
+  PORTRAIT_BADGE_WIDTH_PT,
+  PORTRAIT_BADGE_HEIGHT_PT,
+} from "../pdf-generator";
 
 export interface BatchProgressCallback {
   (progress: {
@@ -138,12 +145,17 @@ export async function executeBulkExport(
         division: category.division,
         photoStorageKey: photo.storageKey,
         photoMimeType: photo.mimeType,
+        cardRole: reg.cardRole || "PARTICIPANT",
         issueDate: new Date(),
       };
 
+      const isPortrait = cardData.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(cardData.cardRole.toUpperCase());
+      const pW = isPortrait ? PORTRAIT_BADGE_WIDTH_PT : CARD_WIDTH_PT;
+      const pH = isPortrait ? PORTRAIT_BADGE_HEIGHT_PT : CARD_HEIGHT_PT;
+
       // 1. Render single card in memory
       const singleCardDoc = await PDFDocument.create();
-      const singlePage = singleCardDoc.addPage([CARD_WIDTH_PT, CARD_HEIGHT_PT]);
+      const singlePage = singleCardDoc.addPage([pW, pH]);
       await drawAthleteCard(singleCardDoc, singlePage, cardData);
       const singlePdfBytes = await singleCardDoc.save();
       const singlePdfBuffer = Buffer.from(singlePdfBytes);
@@ -197,7 +209,7 @@ export async function executeBulkExport(
       }
 
       // 4. Add page to combined multi-page document
-      const combinedPage = combinedPdfDoc.addPage([CARD_WIDTH_PT, CARD_HEIGHT_PT]);
+      const combinedPage = combinedPdfDoc.addPage([pW, pH]);
       await drawAthleteCard(combinedPdfDoc, combinedPage, cardData);
 
       // 5. Add individual PDF to ZIP archive (organized by sanitized academy name)
