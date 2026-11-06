@@ -35,7 +35,7 @@ const {
   CARD_WIDTH_PT,
   CARD_HEIGHT_PT,
   DEFAULT_BRANDING,
-} = require('../src/lib/pdf-generator.ts');
+} = require('../src/lib/pdf-generator');
 
 async function runPhase3Tests() {
   console.log('================================================================');

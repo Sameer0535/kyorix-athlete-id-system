@@ -30,7 +30,7 @@ const sampleJpeg = Buffer.from([
 ]);
 
 // Import card drawer from generator
-const { drawAthleteCard, CARD_WIDTH_PT, CARD_HEIGHT_PT } = require('../src/lib/pdf-generator.ts');
+const { drawAthleteCard, CARD_WIDTH_PT, CARD_HEIGHT_PT } = require('../src/lib/pdf-generator');
 
 const testOutputDir = path.resolve(process.cwd(), 'storage', 'private', 'perf_bench');
 

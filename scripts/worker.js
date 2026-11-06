@@ -29,7 +29,7 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const { claimNextQueuedJob, processJob, recoverStaleJobs } = require('../src/lib/queue/worker.ts');
+const { claimNextQueuedJob, processJob, recoverStaleJobs } = require('../src/lib/queue/worker');
 
 const workerId = `daemon-${process.pid}-${Date.now()}`;
 let isRunning = true;

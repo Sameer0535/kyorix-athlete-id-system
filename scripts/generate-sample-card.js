@@ -5,7 +5,7 @@
 const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
-const { generateIndividualCardPdf } = require('../src/lib/pdf-generator.ts');
+const { generateIndividualCardPdf } = require('../src/lib/pdf-generator');
 
 async function createSampleCard() {
   console.log('[SAMPLE] Generating official CR80 championship athlete ID card...');

@@ -35,17 +35,17 @@ const {
   generateIndividualCardPdf,
   CARD_WIDTH_PT,
   CARD_HEIGHT_PT,
-} = require('../src/lib/pdf-generator.ts');
+} = require('../src/lib/pdf-generator');
 
 const {
   createAthleteAccessToken,
   verifyAthleteAccessToken,
   createAdminSessionToken,
   verifyAdminSessionToken,
-} = require('../src/lib/auth.ts');
+} = require('../src/lib/auth');
 
-const { executeBulkExport } = require('../src/lib/export/bulk-exporter.ts');
-const { enqueueBulkJob, processJob, recoverStaleJobs } = require('../src/lib/queue/worker.ts');
+const { executeBulkExport } = require('../src/lib/export/bulk-exporter');
+const { enqueueBulkJob, processJob, recoverStaleJobs } = require('../src/lib/queue/worker');
 
 // Minimal valid JPEG
 const sampleJpeg = Buffer.from([

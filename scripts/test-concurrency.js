@@ -27,8 +27,8 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-const { executeBulkExport } = require('../src/lib/export/bulk-exporter.ts');
-const { hashAthleteAccessCode } = require('../src/lib/auth.ts');
+const { executeBulkExport } = require('../src/lib/export/bulk-exporter');
+const { hashAthleteAccessCode } = require('../src/lib/auth');
 
 const prisma = new PrismaClient();
 
