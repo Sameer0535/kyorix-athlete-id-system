@@ -55,37 +55,51 @@ const COMPETITION_DISCIPLINES: DisciplineOption[] = [
 ];
 
 const RANK_OPTIONS = [
-  { value: "1st Dan / Poom (Black Belt)", label: "1st Dan / Poom (Black Belt)" },
-  { value: "2nd Dan / Poom", label: "2nd Dan / Poom" },
-  { value: "3rd Dan / Poom", label: "3rd Dan / Poom" },
-  { value: "4th Dan / Poom", label: "4th Dan / Poom" },
-  { value: "5th Dan", label: "5th Dan" },
-  { value: "6th Dan", label: "6th Dan" },
-  { value: "7th Dan & Above", label: "7th Dan & Above" },
-  { value: "10th Kup (White Belt)", label: "10th Kup (White Belt)" },
-  { value: "9th Kup (Yellow Stripe)", label: "9th Kup (Yellow Stripe)" },
-  { value: "8th Kup (Yellow Belt)", label: "8th Kup (Yellow Belt)" },
-  { value: "7th Kup (Green Stripe)", label: "7th Kup (Green Stripe)" },
-  { value: "6th Kup (Green Belt)", label: "6th Kup (Green Belt)" },
-  { value: "5th Kup (Blue Stripe)", label: "5th Kup (Blue Stripe)" },
-  { value: "4th Kup (Blue Belt)", label: "4th Kup (Blue Belt)" },
-  { value: "3rd Kup (Red Stripe)", label: "3rd Kup (Red Stripe)" },
-  { value: "2nd Kup (Red Belt)", label: "2nd Kup (Red Belt)" },
-  { value: "1st Kup (Black Stripe)", label: "1st Kup (Black Stripe)" },
+  // Black Belt / Poom (Regular Championship)
+  { value: "1st Dan / Poom (Black Belt)", label: "1st Dan / Poom (Black Belt)", isRegular: true },
+  { value: "2nd Dan / Poom", label: "2nd Dan / Poom", isRegular: true },
+  { value: "3rd Dan / Poom", label: "3rd Dan / Poom", isRegular: true },
+  { value: "4th Dan / Poom", label: "4th Dan / Poom", isRegular: true },
+  { value: "5th Dan", label: "5th Dan", isRegular: true },
+  { value: "6th Dan", label: "6th Dan", isRegular: true },
+  { value: "7th Dan & Above", label: "7th Dan & Above", isRegular: true },
+  // Color Belts (Freshers Championship)
+  { value: "10th Kup (White Belt)", label: "10th Kup (White Belt)", isRegular: false },
+  { value: "9th Kup (Yellow Stripe)", label: "9th Kup (Yellow Stripe)", isRegular: false },
+  { value: "8th Kup (Yellow Belt)", label: "8th Kup (Yellow Belt)", isRegular: false },
+  { value: "7th Kup (Green Stripe)", label: "7th Kup (Green Stripe)", isRegular: false },
+  { value: "6th Kup (Green Belt)", label: "6th Kup (Green Belt)", isRegular: false },
+  { value: "5th Kup (Blue Stripe)", label: "5th Kup (Blue Stripe)", isRegular: false },
+  { value: "4th Kup (Blue Belt)", label: "4th Kup (Blue Belt)", isRegular: false },
+  { value: "3rd Kup (Red Stripe)", label: "3rd Kup (Red Stripe)", isRegular: false },
+  { value: "2nd Kup (Red Belt)", label: "2nd Kup (Red Belt)", isRegular: false },
+  { value: "1st Kup (Black Stripe)", label: "1st Kup (Black Stripe)", isRegular: false },
 ];
 
 const VT_COMPETITION_TYPES = [
   {
-    id: "INDIVIDUAL" as const,
-    title: "Male/Female – Individual",
-    subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-IND",
+    id: "IND_FR" as const,
+    title: "Male/Female – Individual Freshers",
+    subtitle: "Color Belts (Freshers Tier)",
+    codePrefix: "VT-IND-FR",
   },
   {
-    id: "MIX_GENDER" as const,
-    title: "Male/Female – Mix Gender Individual",
-    subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-MIX",
+    id: "IND_REG" as const,
+    title: "Male/Female – Individual Regular",
+    subtitle: "Black Belt / Poom (Regular Tier)",
+    codePrefix: "VT-IND-REG",
+  },
+  {
+    id: "MIX_FR" as const,
+    title: "Male/Female – Mix Gender Individual Freshers",
+    subtitle: "Color Belts (Freshers Tier)",
+    codePrefix: "VT-MIX-FR",
+  },
+  {
+    id: "MIX_REG" as const,
+    title: "Male/Female – Mix Gender Individual Regular",
+    subtitle: "Black Belt / Poom (Regular Tier)",
+    codePrefix: "VT-MIX-REG",
   },
 ];
 
@@ -172,7 +186,9 @@ export default function AthleteRegisterPage() {
   const [rankGrade, setRankGrade] = useState("1st Dan / Poom (Black Belt)");
 
   // Discipline-specific selections
-  const [vtType, setVtType] = useState<"INDIVIDUAL" | "MIX_GENDER">("INDIVIDUAL");
+  const [kyorugiTier, setKyorugiTier] = useState<"REGULAR" | "FRESHERS">("REGULAR");
+  const [poomsaeTier, setPoomsaeTier] = useState<"REGULAR" | "FRESHERS">("REGULAR");
+  const [vtType, setVtType] = useState<"IND_REG" | "IND_FR" | "MIX_REG" | "MIX_FR">("IND_REG");
   const [vtDivision, setVtDivision] = useState<"CHILD" | "SUBJUN" | "CADET" | "JUNIOR" | "SENIOR">("SENIOR");
   const [kyorugiDivision, setKyorugiDivision] = useState("SENIOR");
   const [kyorugiWeightId, setKyorugiWeightId] = useState("");
@@ -277,6 +293,11 @@ export default function AthleteRegisterPage() {
     loadOptions();
   }, []);
 
+  const isRegularRank = useMemo(() => {
+    const found = RANK_OPTIONS.find((r) => r.value === rankGrade);
+    return found ? found.isRegular : true;
+  }, [rankGrade]);
+
   const toggleDiscipline = (key: DisciplineKey) => {
     setSelectedDisciplines((prev) => {
       if (prev.includes(key)) {
@@ -288,29 +309,51 @@ export default function AthleteRegisterPage() {
     });
   };
 
+  // Sync tiers with selected rank
+  useEffect(() => {
+    const tier = isRegularRank ? "REGULAR" : "FRESHERS";
+    setKyorugiTier(tier);
+    setPoomsaeTier(tier);
+    if (!isRegularRank) {
+      if (vtType === "IND_REG") setVtType("IND_FR");
+      if (vtType === "MIX_REG") setVtType("MIX_FR");
+    } else {
+      if (vtType === "IND_FR") setVtType("IND_REG");
+      if (vtType === "MIX_FR") setVtType("MIX_REG");
+    }
+  }, [isRegularRank]);
+
+  // Auto-correct division/type when tier switches
+  useEffect(() => {
+    if (kyorugiTier === "REGULAR" && kyorugiDivision === "CHILDREN") {
+      setKyorugiDivision("SUB_JUNIOR");
+    }
+  }, [kyorugiTier, kyorugiDivision]);
+
+  useEffect(() => {
+    if (poomsaeTier === "FRESHERS" && poomsaeType === "TRIO_TEAM") {
+      setPoomsaeType("INDIVIDUAL");
+    }
+  }, [poomsaeTier, poomsaeType]);
+
   // Filtered Kyorugi Categories for Participant
   const filteredKyorugiCategories = useMemo(() => {
-    const list = weightCategories.filter((wc) => {
+    return weightCategories.filter((wc) => {
       if (wc.gender !== gender) return false;
-      if (!wc.code.startsWith("KY_")) return false;
-      if (wc.code.includes("TEAM")) return false;
+      const isTierMatch = kyorugiTier === "REGULAR"
+        ? wc.code.startsWith("KY_REG_") && !wc.code.includes("TEAM")
+        : wc.code.startsWith("KY_FR_");
+      if (!isTierMatch) return false;
 
-      if (kyorugiDivision === "CHILDREN") return wc.code.includes("_CH_");
-      if (kyorugiDivision === "SUB_JUNIOR") return wc.code.includes("_SUBJR_");
+      if (kyorugiDivision === "CHILDREN") return wc.code.includes("_CH_") || wc.division === "SUB_CADET";
+      if (kyorugiDivision === "SUB_JUNIOR") return wc.code.includes("_SUBJR_") || wc.division === "SUB_CADET";
       if (kyorugiDivision === "CADET") return wc.division === "CADET";
       if (kyorugiDivision === "JUNIOR") return wc.division === "JUNIOR";
       if (kyorugiDivision === "SENIOR") return wc.division === "SENIOR";
 
       return true;
     });
-
-    const seen = new Set<string>();
-    return list.filter((item) => {
-      if (seen.has(item.name)) return false;
-      seen.add(item.name);
-      return true;
-    });
-  }, [weightCategories, gender, kyorugiDivision]);
+  }, [weightCategories, gender, kyorugiTier, kyorugiDivision]);
 
   useEffect(() => {
     if (filteredKyorugiCategories.length > 0) {
@@ -323,27 +366,24 @@ export default function AthleteRegisterPage() {
 
   // Filtered Poomsae Categories
   const filteredPoomsaeCategories = useMemo(() => {
-    const list = weightCategories.filter((wc) => {
+    return weightCategories.filter((wc) => {
       if (poomsaeType === "INDIVIDUAL") {
         if (wc.gender !== gender) return false;
-        return wc.code.startsWith("POOM_") && wc.code.includes("_IND_");
+        return poomsaeTier === "REGULAR"
+          ? wc.code.startsWith("POOM_REG_IND_")
+          : wc.code.startsWith("POOM_FR_IND_");
       }
       if (poomsaeType === "MIX_PAIR") {
-        return wc.code.includes("PAIR");
+        return poomsaeTier === "REGULAR"
+          ? wc.code.startsWith("POOM_REG_PAIR_")
+          : wc.code.startsWith("POOM_FR_PAIR_");
       }
       if (poomsaeType === "TRIO_TEAM") {
         return wc.code.includes("TEAM") && wc.code.includes("POOM");
       }
       return wc.code.startsWith("POOM_");
     });
-
-    const seen = new Set<string>();
-    return list.filter((item) => {
-      if (seen.has(item.name)) return false;
-      seen.add(item.name);
-      return true;
-    });
-  }, [weightCategories, gender, poomsaeType]);
+  }, [weightCategories, gender, poomsaeTier, poomsaeType]);
 
   useEffect(() => {
     if (filteredPoomsaeCategories.length > 0) {
@@ -817,7 +857,16 @@ export default function AthleteRegisterPage() {
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200">
                   <span className="text-slate-500">Competitor Rank</span>
-                  <span className="font-bold text-slate-900">{rankGrade}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">{rankGrade}</span>
+                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                      isRegularRank
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {isRegularRank ? "REGULAR" : "FRESHERS"}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200">
                   <span className="text-slate-500">Affiliated Academy / Club</span>
@@ -1536,25 +1585,43 @@ export default function AthleteRegisterPage() {
 
                 {/* 2. COMPETITOR BELT / RANK GRADE */}
                 <div className="space-y-2 bg-slate-50/50 border border-slate-200 rounded-2xl p-4">
-                  <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-blue-600" />
-                    COMPETITOR BELT / RANK GRADE <span className="text-red-500">*</span>
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-blue-600" />
+                      COMPETITOR BELT / RANK GRADE <span className="text-red-500">*</span>
+                    </label>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                      isRegularRank
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    }`}>
+                      {isRegularRank ? "BLACK BELT / POOM (REGULAR)" : "COLOR BELT (FRESHERS)"}
+                    </span>
+                  </div>
 
                   <select
                     value={rankGrade}
                     onChange={(e) => setRankGrade(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    {RANK_OPTIONS.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
+                    <optgroup label="Black Belt / Poom (Regular Championship)">
+                      {RANK_OPTIONS.filter((r) => r.isRegular).map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Color Belts (Freshers Championship)">
+                      {RANK_OPTIONS.filter((r) => !r.isRegular).map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </optgroup>
                   </select>
 
                   <p className="text-[11px] text-slate-500">
-                    Select your official Kukkiwon Dan/Poom rank or Color Belt grade.
+                    Select your official Kukkiwon Dan/Poom rank or Color Belt grade. Black Belts / Poom must hold an authentic Kukkiwon Dan or Poom certificate.
                   </p>
                 </div>
 
@@ -1642,11 +1709,50 @@ export default function AthleteRegisterPage() {
                 {/* B. KYORUGI (SPARRING) EVENT DETAILS */}
                 {selectedDisciplines.includes("KYORUGI") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Swords className="w-4 h-4 text-blue-600" />
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                        KYORUGI (SPARRING) EVENT DETAILS
-                      </h4>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Swords className="w-4 h-4 text-blue-600" />
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                          KYORUGI (SPARRING) EVENT DETAILS
+                        </h4>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                        kyorugiTier === "REGULAR"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {kyorugiTier} DIVISION
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Competition Tier <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setKyorugiTier("REGULAR")}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
+                            kyorugiTier === "REGULAR"
+                              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          Regular (Black Belt / Poom)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setKyorugiTier("FRESHERS")}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
+                            kyorugiTier === "FRESHERS"
+                              ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          Freshers (Color Belts)
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1659,7 +1765,9 @@ export default function AthleteRegisterPage() {
                           onChange={(e) => setKyorugiDivision(e.target.value)}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                         >
-                          <option value="CHILDREN">Children (Ages 5–11 / Born 2014+)</option>
+                          {kyorugiTier === "FRESHERS" && (
+                            <option value="CHILDREN">Children (Ages 5–11 / Born 2014+)</option>
+                          )}
                           <option value="SUB_JUNIOR">Sub-Junior (Ages 10–11 / Born 2013–2014)</option>
                           <option value="CADET">Cadet (Ages 12–14 / Born 2010–2012)</option>
                           <option value="JUNIOR">Junior (Ages 15–17 / Born 2007–2009)</option>
@@ -1690,11 +1798,50 @@ export default function AthleteRegisterPage() {
                 {/* C. RECOGNISED POOMSAE EVENT DETAILS */}
                 {selectedDisciplines.includes("POOMSAE") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                      <Layers className="w-4 h-4 text-blue-600" />
-                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                        RECOGNISED POOMSAE EVENT DETAILS
-                      </h4>
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-blue-600" />
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                          RECOGNISED POOMSAE EVENT DETAILS
+                        </h4>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
+                        poomsaeTier === "REGULAR"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {poomsaeTier} DIVISION
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Competition Tier <span className="text-red-500">*</span>
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPoomsaeTier("REGULAR")}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
+                            poomsaeTier === "REGULAR"
+                              ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          Regular (Black Belt / Poom)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPoomsaeTier("FRESHERS")}
+                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition ${
+                            poomsaeTier === "FRESHERS"
+                              ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          Freshers (Color Belts)
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1709,7 +1856,9 @@ export default function AthleteRegisterPage() {
                         >
                           <option value="INDIVIDUAL">Individual Recognized Poomsae</option>
                           <option value="MIX_PAIR">Mixed Pair Recognized Poomsae</option>
-                          <option value="TRIO_TEAM">Trio Team Recognized Poomsae</option>
+                          {poomsaeTier === "REGULAR" && (
+                            <option value="TRIO_TEAM">Trio Team Recognized Poomsae</option>
+                          )}
                         </select>
                       </div>
 

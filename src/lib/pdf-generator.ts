@@ -623,14 +623,10 @@ export async function drawPortraitTemplateCard(
 
   const cleanCat = (data.weightCategoryName || "")
     .replace(/\s*\((Fin|Fly|Bantam|Feather|Light|Welter|Middle|Heavy|Heavyweight|Light Middle|Light Heavy)\)/gi, "")
-    .replace(/\s*\((Regular|Freshers)\)/gi, "")
-    .replace(/\s*-\s*(Regular|Freshers)/gi, "")
-    .replace(/\b(Regular|Freshers)\s*/gi, "")
     .replace(/\bUnder\s+(\d+)\s*kg/gi, (_, p) => `U ${p}kg`)
     .replace(/\bOver\s+(\d+)\s*kg/gi, (_, p) => `O ${p}kg`)
     .replace(/\s+-(\d+)\s*kg/gi, (_, p) => ` U ${p}kg`)
     .replace(/\s+\+(\d+)\s*kg/gi, (_, p) => ` O ${p}kg`)
-    .replace(/\s*-\s*-+/g, "-")
     .replace(/\s+/g, " ")
     .trim();
 
