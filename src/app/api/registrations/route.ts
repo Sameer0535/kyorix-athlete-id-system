@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
     const gender = (formData.get("gender") as string) || "MALE";
     const academyIdRaw = formData.get("academyId") as string | null;
     const academyNameRaw = formData.get("academyName") as string | null;
-    const weightCategoryId = formData.get("weightCategoryId") as string;
-    const danOrPoom = (formData.get("danOrPoom") as string) || null;
+    const notesRaw = (formData.get("notes") as string) || (formData.get("designation") as string) || (formData.get("officiatingRole") as string) || (formData.get("accreditedRole") as string) || null;
+    let weightCategoryId = formData.get("weightCategoryId") as string | null;
+    const danOrPoom = (formData.get("danOrPoom") as string) || (formData.get("kukkiwonDanId") as string) || null;
     const contactPhone = (formData.get("contactPhone") as string) || null;
     const contactEmail = (formData.get("contactEmail") as string) || null;
     const countryCode = ((formData.get("countryCode") as string) || "IND").trim().toUpperCase();
@@ -27,21 +28,37 @@ export async function POST(req: NextRequest) {
       ? cardRoleRaw
       : "PARTICIPANT";
 
+    // Auto-resolve weightCategoryId for official non-athlete roles if omitted
+    if (!weightCategoryId && cardRole !== "PARTICIPANT") {
+      const officialCode = cardRole === "COACH" ? "OFFICIAL_COACH" : cardRole === "REFEREE" ? "OFFICIAL_REFEREE" : "OFFICIAL_STAFF";
+      const cat = await prisma.weightCategory.findFirst({
+        where: { code: officialCode },
+      });
+      if (cat) weightCategoryId = cat.id;
+    }
+
+    // Auto-generate staff ID if omitted for staff
+    let resolvedKukkiwonId = kukkiwonIdRaw;
+    if (!resolvedKukkiwonId && cardRole === "STAFF") {
+      const staffCount = await prisma.athlete.count();
+      resolvedKukkiwonId = `STAFF-${new Date().getFullYear()}-${String(staffCount + 1).padStart(4, "0")}`;
+    }
+
     // 1. Validation
     const trimmedAcademy = academyNameRaw?.trim() || "";
-    if (!kukkiwonIdRaw || !fullName || (!academyIdRaw && !trimmedAcademy) || !weightCategoryId) {
+    if (!resolvedKukkiwonId || !fullName || (!academyIdRaw && !trimmedAcademy) || !weightCategoryId) {
       return apiError(
-        "Kukkiwon ID, full name, academy name, and weight category are required fields.",
+        "Kukkiwon ID, full name, academy / affiliation name, and category are required fields.",
         "VALIDATION_ERROR",
         400
       );
     }
 
     if (!photoFile || photoFile.size === 0) {
-      return apiError("An athlete photograph is required.", "MISSING_PHOTO", 400);
+      return apiError("A portrait photograph is required.", "MISSING_PHOTO", 400);
     }
 
-    const kukkiwonValidation = validateKukkiwonId(kukkiwonIdRaw);
+    const kukkiwonValidation = validateKukkiwonId(resolvedKukkiwonId);
     if (!kukkiwonValidation.valid || !kukkiwonValidation.normalized) {
       return apiError(
         kukkiwonValidation.error || "Invalid Kukkiwon ID.",
@@ -163,6 +180,7 @@ export async function POST(req: NextRequest) {
           cardRole,
           countryCode,
           countryName,
+          notes: notesRaw,
         },
       });
 

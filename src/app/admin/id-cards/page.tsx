@@ -275,6 +275,42 @@ export default function AdminIdCardsPage() {
     }
   };
 
+  const handleGenerateAllPending = async () => {
+    const pendingItems = items.filter((i) => !i.idCard || i.idCard.status !== "GENERATED");
+    if (pendingItems.length === 0) {
+      alert("All approved athletes already have ID cards generated.");
+      return;
+    }
+
+    if (!confirm(`Generate official credentials for all ${pendingItems.length} pending athlete(s)?`)) return;
+
+    setActionInProgress(true);
+    setError(null);
+    let successCount = 0;
+
+    try {
+      for (const item of pendingItems) {
+        try {
+          const res = await fetch("/api/admin/id-cards/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ registrationId: item.id }),
+          });
+          const json = await res.json();
+          if (res.ok && json.success) successCount++;
+        } catch {
+          // continue
+        }
+      }
+      setSuccessMsg(`Successfully generated ${successCount} ID Card(s).`);
+      fetchData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error generating cards.");
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
   const handleBulkGenerate = async () => {
     const idsToGenerate = selectedIds.length > 0 ? selectedIds : items.map((i) => i.id);
     if (idsToGenerate.length === 0) {
@@ -386,6 +422,16 @@ export default function AdminIdCardsPage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            {stats.pendingGeneration > 0 && (
+              <button
+                onClick={handleGenerateAllPending}
+                disabled={actionInProgress}
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-xs font-bold text-white transition shadow-sm"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Generate Pending Cards ({stats.pendingGeneration})
+              </button>
+            )}
             <button
               onClick={handleBulkGenerate}
               disabled={actionInProgress || items.length === 0}

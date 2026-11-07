@@ -82,6 +82,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
     "registrations:replace_photo",
     "academies:manage",
     "weight_categories:manage",
+    "cards:read",
     "cards:generate",
     "cards:download",
     "cards:bulk_generate",
@@ -95,10 +96,14 @@ export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
     "academies:manage",
     "weight_categories:manage",
     "cards:read",
+    "cards:generate",
+    "cards:download",
+    "cards:bulk_generate",
     "audit:read",
   ],
   CARD_OPERATOR: [
     "registrations:read",
+    "cards:read",
     "cards:generate",
     "cards:download",
     "cards:bulk_generate",
@@ -111,6 +116,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, string[]> = {
 };
 
 export function hasPermission(role: AdminRole, permission: string): boolean {
+  if (role === "SUPER_ADMIN") return true;
   const permissions = ROLE_PERMISSIONS[role] || [];
   return permissions.includes(permission);
 }

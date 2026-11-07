@@ -40,6 +40,7 @@ export interface AthleteCardData {
   division: string;
   countryCode?: string | null;
   countryName?: string | null;
+  notes?: string | null;
   photoStorageKey: string;
   photoMimeType?: string;
   photoBase64?: string | null;
@@ -622,13 +623,17 @@ export async function drawPortraitTemplateCard(
 
   let roleOrCategory = "";
   if (role === "COACH") {
-    roleOrCategory = "Corner Coach";
+    roleOrCategory = data.notes?.trim() || "Corner Coach";
   } else if (role === "REFEREE") {
-    roleOrCategory = "Ring Official / Referee";
+    roleOrCategory = data.notes?.trim() || "Ring Judge / Referee";
   } else if (role === "STAFF") {
-    roleOrCategory = "Organising Committee";
+    roleOrCategory = data.notes?.trim() || "Organising Committee";
   } else {
-    roleOrCategory = data.weightCategoryName || "Regular";
+    if (data.notes?.trim() && !data.notes.includes(data.weightCategoryName)) {
+      roleOrCategory = `${data.weightCategoryName} • ${data.notes.trim()}`;
+    } else {
+      roleOrCategory = data.weightCategoryName || "Regular";
+    }
   }
 
   // Draw Kukkiwon ID

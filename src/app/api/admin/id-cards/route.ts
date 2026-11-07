@@ -55,18 +55,58 @@ export async function GET(req: NextRequest) {
     ] = await Promise.all([
       prisma.registration.findMany({
         where,
-        include: {
-          athlete: true,
-          academy: true,
-          weightCategory: true,
-          photograph: true,
+        select: {
+          id: true,
+          registrationNumber: true,
+          approvalStatus: true,
+          cardRole: true,
+          countryCode: true,
+          countryName: true,
+          notes: true,
+          createdAt: true,
+          athlete: {
+            select: {
+              id: true,
+              kukkiwonId: true,
+              fullName: true,
+              gender: true,
+              danOrPoom: true,
+              countryCode: true,
+              countryName: true,
+            },
+          },
+          academy: {
+            select: {
+              id: true,
+              name: true,
+              city: true,
+              state: true,
+            },
+          },
+          weightCategory: {
+            select: {
+              id: true,
+              name: true,
+              division: true,
+            },
+          },
+          photograph: {
+            select: {
+              id: true,
+              storageKey: true,
+              fileName: true,
+              mimeType: true,
+            },
+          },
           idCard: {
-            include: {
-              batch: true,
-              generationHistory: {
-                orderBy: { createdAt: "desc" },
-                take: 1,
-              },
+            select: {
+              id: true,
+              cardNumber: true,
+              status: true,
+              generatedFileKey: true,
+              generatedAt: true,
+              downloadCountAthlete: true,
+              downloadCountAdmin: true,
             },
           },
         },

@@ -47,7 +47,14 @@ export default async function AdminDashboardPage() {
         athlete: true,
         academy: true,
         weightCategory: true,
-        photograph: true,
+        photograph: {
+          select: {
+            id: true,
+            storageKey: true,
+            fileName: true,
+            mimeType: true,
+          },
+        },
       },
     }),
   ]);

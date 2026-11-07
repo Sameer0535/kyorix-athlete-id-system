@@ -150,6 +150,7 @@ export async function executeBulkExport(
         photoMimeType: photo.mimeType,
         photoBase64: photo.photoBase64,
         cardRole: reg.cardRole || "PARTICIPANT",
+        notes: reg.notes,
         issueDate: new Date(),
       };
 

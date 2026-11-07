@@ -71,6 +71,7 @@ export async function PATCH(
           photoMimeType: registration.photograph.mimeType,
           photoBase64: registration.photograph.photoBase64,
           cardRole: registration.cardRole || "PARTICIPANT",
+          notes: notes || registration.notes,
           issueDate: new Date(),
         };
 

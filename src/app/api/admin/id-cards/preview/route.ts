@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
       photoMimeType: registration.photograph.mimeType,
       photoBase64: registration.photograph.photoBase64,
       cardRole: registration.cardRole || "PARTICIPANT",
+      notes: registration.notes,
       issueDate: new Date(),
     };
 

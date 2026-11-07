@@ -30,10 +30,12 @@ export async function GET() {
       }),
     ]);
 
-    return apiSuccess({
+    const response = apiSuccess({
       academies,
       weightCategories,
     });
+    response.headers.set("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
+    return response;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load options";
     return apiError(message, "FETCH_FAILED", 500);
