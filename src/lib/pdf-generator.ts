@@ -2,6 +2,7 @@ import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fs from "fs";
 import path from "path";
 import { getPrivateFile } from "./storage";
+import { drawVectorCountryFlag } from "./countries";
 
 export interface AthleteCardData {
   cardNumber: string;
@@ -14,6 +15,8 @@ export interface AthleteCardData {
   academyCity?: string | null;
   weightCategoryName: string;
   division: string;
+  countryCode?: string | null;
+  countryName?: string | null;
   photoStorageKey: string;
   photoMimeType?: string;
   cardRole?: "PARTICIPANT" | "REFEREE" | "COACH" | "STAFF" | string;
@@ -398,53 +401,6 @@ export async function drawAthleteCard(
   });
 }
 
-/**
- * Draws a sharp vector Indian National Flag (Tiranga) with saffron, white, green stripes and Ashoka Chakra
- */
-function drawIndianFlag(page: any, x: number, y: number, width = 14, height = 9.5) {
-  const stripeH = height / 3;
-  // Saffron (top)
-  page.drawRectangle({
-    x,
-    y: y + stripeH * 2,
-    width,
-    height: stripeH,
-    color: rgb(1.0, 0.60, 0.20),
-  });
-  // White (middle)
-  page.drawRectangle({
-    x,
-    y: y + stripeH,
-    width,
-    height: stripeH,
-    color: rgb(1.0, 1.0, 1.0),
-  });
-  // Green (bottom)
-  page.drawRectangle({
-    x,
-    y,
-    width,
-    height: stripeH,
-    color: rgb(0.075, 0.533, 0.031),
-  });
-  // Navy Ashoka Chakra center circle
-  page.drawCircle({
-    x: x + width / 2,
-    y: y + height / 2,
-    size: 1.15,
-    color: rgb(0.0, 0.0, 0.50),
-  });
-  // Thin border
-  page.drawRectangle({
-    x,
-    y,
-    width,
-    height,
-    borderColor: rgb(0.75, 0.75, 0.75),
-    borderWidth: 0.4,
-  });
-}
-
 // Precise bounding coordinates of photo frames inside each official championship template
 const PHOTO_FRAME_COORDS: Record<string, { xRatio: number; yTopRatio: number; wRatio: number; hRatio: number }> = {
   PARTICIPANT: { xRatio: 0.702, yTopRatio: 0.338, wRatio: 0.226, hRatio: 0.185 },
@@ -547,15 +503,18 @@ export async function drawPortraitTemplateCard(
   // Left side starts at x = 18 pt
   let textY = cardHeight * 0.49;
 
-  // Line 1: IND + Indian Flag
-  page.drawText("IND", {
+  // Line 1: Country Code + Vector Flag
+  const country = (data.countryCode || "IND").toUpperCase();
+  page.drawText(country, {
     x: 18,
     y: textY,
     size: 8.5,
     font: fontBold,
     color: rgb(0.08, 0.12, 0.18),
   });
-  drawIndianFlag(page, 42, textY - 1, 14, 9.5);
+  const countryTextWidth = fontBold.widthOfTextAtSize(country, 8.5);
+  const flagX = 18 + countryTextWidth + 4;
+  drawVectorCountryFlag(page, country, flagX, textY - 1, 14, 9.5);
 
   // Line 2: Full Name (Bold Uppercase Black)
   textY -= 15;

@@ -33,10 +33,12 @@ export async function GET(req: NextRequest) {
       select: { id: true, fullName: true },
     });
 
+    const isAvailable = !existing;
     return apiSuccess({
       validFormat: true,
       normalized,
-      isAvailable: !existing,
+      available: isAvailable,
+      isAvailable,
       message: existing
         ? `Kukkiwon ID '${normalized}' is already registered in the system.`
         : `Kukkiwon ID '${normalized}' is available for registration.`,

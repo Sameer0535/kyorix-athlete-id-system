@@ -51,14 +51,19 @@ export default function PhotoCropper({
     reader.onload = () => {
       const src = reader.result as string;
       setImageSrc(src);
-      setIsCropping(true);
+      setIsCropping(false); // Automatically ready, don't force mandatory crop step
       setZoom(1);
       setOffset({ x: 0, y: 0 });
+
+      // Automatically inform parent right away with original file so user can proceed seamlessly!
+      const callback = onPhotoCropped || onCropComplete;
+      if (callback) {
+        callback(file, src);
+      }
 
       const img = new Image();
       img.onload = () => {
         imageRef.current = img;
-        drawCanvas();
       };
       img.src = src;
     };
@@ -248,11 +253,11 @@ export default function PhotoCropper({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col sm:flex-row gap-5 items-center">
-          <div className="w-32 h-40 bg-slate-50 border-2 border-slate-200 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
-            {currentPreview ? (
+        <div className="flex flex-col sm:flex-row gap-5 items-center bg-slate-50 border border-slate-200 rounded-2xl p-5">
+          <div className="w-32 h-40 bg-white border-2 border-blue-500 rounded-xl flex items-center justify-center overflow-hidden shrink-0 shadow-sm relative group">
+            {currentPreview || imageSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={currentPreview} alt="Athlete Portrait" className="w-full h-full object-cover" />
+              <img src={currentPreview || imageSrc || ""} alt="Athlete Portrait" className="w-full h-full object-cover" />
             ) : (
               <div className="text-center p-3 text-slate-400 text-[11px] leading-tight">
                 No photo selected
@@ -260,33 +265,37 @@ export default function PhotoCropper({
             )}
           </div>
 
-          <div className="flex-1 w-full space-y-2">
-            <label className="block text-xs font-semibold text-slate-700">
-              Upload Official Portrait Photograph <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileChange}
-              className="w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
-            />
-            <div className="flex items-center gap-2 text-[11px] text-slate-500">
-              <span>Supports JPEG, PNG, WebP (Max 5MB)</span>
-              <span>&bull;</span>
-              <span>Includes interactive crop & alignment</span>
+          <div className="flex-1 w-full space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Upload Official Portrait Photograph <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                className="w-full text-xs text-slate-600 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+              />
             </div>
 
-            {currentPreview && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (imageSrc) setIsCropping(true);
-                }}
-                className="text-xs text-blue-400 hover:text-blue-300 font-medium inline-flex items-center gap-1 mt-1"
-              >
-                <Upload className="w-3 h-3" /> Re-crop / Reposition photo
-              </button>
+            {(currentPreview || imageSrc) && (
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" /> Photo Uploaded & Ready
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCropping(true)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg transition"
+                >
+                  <Upload className="w-3 h-3" /> Adjust Framing / Crop (Optional)
+                </button>
+              </div>
             )}
+
+            <div className="text-[11px] text-slate-500">
+              Supports JPEG, PNG, WebP (Max 5MB) &bull; Crop & position adjustment is optional
+            </div>
           </div>
         </div>
       )}

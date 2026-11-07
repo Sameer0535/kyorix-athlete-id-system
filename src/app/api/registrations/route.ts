@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
     const danOrPoom = (formData.get("danOrPoom") as string) || null;
     const contactPhone = (formData.get("contactPhone") as string) || null;
     const contactEmail = (formData.get("contactEmail") as string) || null;
+    const countryCode = ((formData.get("countryCode") as string) || "IND").trim().toUpperCase();
+    const countryName = ((formData.get("countryName") as string) || "India").trim();
     const photoFile = formData.get("photo") as File | null;
     const cardRoleRaw = ((formData.get("cardRole") as string) || "PARTICIPANT").toUpperCase();
     const cardRole = ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(cardRoleRaw)
@@ -118,6 +120,8 @@ export async function POST(req: NextRequest) {
           kukkiwonId,
           fullName: fullName.trim(),
           gender: gender === "FEMALE" ? "FEMALE" : "MALE",
+          countryCode,
+          countryName,
           danOrPoom,
           contactPhone,
           contactEmail,
@@ -156,6 +160,8 @@ export async function POST(req: NextRequest) {
           approvalStatus: "PENDING_REVIEW",
           athleteAccessTokenHash,
           cardRole,
+          countryCode,
+          countryName,
         },
       });
 
@@ -191,6 +197,8 @@ export async function POST(req: NextRequest) {
         approvalStatus: result.registration.approvalStatus,
         athleteAccessToken: result.athleteAccessToken,
         cardRole: result.registration.cardRole,
+        countryCode,
+        countryName,
         message: "Registration submitted successfully. Awaiting administrative review.",
       },
       201

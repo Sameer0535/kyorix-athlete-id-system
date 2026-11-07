@@ -144,6 +144,8 @@ export async function executeBulkExport(
         academyCity: academy?.city || "",
         weightCategoryName: category.name,
         division: category.division,
+        countryCode: (reg as any).countryCode || (athlete as any).countryCode || "IND",
+        countryName: (reg as any).countryName || (athlete as any).countryName || "India",
         photoStorageKey: photo.storageKey,
         photoMimeType: photo.mimeType,
         cardRole: reg.cardRole || "PARTICIPANT",

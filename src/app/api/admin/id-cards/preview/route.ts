@@ -68,6 +68,8 @@ export async function GET(req: NextRequest) {
       academyCity: registration.academy.city,
       weightCategoryName: registration.weightCategory.name,
       division: registration.weightCategory.division,
+      countryCode: registration.countryCode || registration.athlete.countryCode || "IND",
+      countryName: registration.countryName || registration.athlete.countryName || "India",
       photoStorageKey: registration.photograph.storageKey,
       photoMimeType: registration.photograph.mimeType,
       cardRole: registration.cardRole || "PARTICIPANT",

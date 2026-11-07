@@ -157,6 +157,8 @@ model Athlete {
   contactPhone String?
   contactEmail String?
   danOrPoom    String? // e.g. "1st Dan", "2nd Poom", "1st Geup"
+  countryCode  String?   @default("IND")
+  countryName  String?   @default("India")
   academyId    String
   academy      Academy   @relation(fields: [academyId], references: [id], onUpdate: Cascade, onDelete: Restrict)
   createdAt    DateTime  @default(now())
@@ -240,6 +242,8 @@ model Registration {
   athleteAccessToken     String?        @unique
   athleteAccessTokenHash String?        @unique
   cardRole               String         @default("PARTICIPANT") // PARTICIPANT, REFEREE, COACH, STAFF
+  countryCode            String?        @default("IND")
+  countryName            String?        @default("India")
   notes                  String?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt

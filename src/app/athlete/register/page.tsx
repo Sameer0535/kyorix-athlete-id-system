@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import PhotoCropper from "@/components/PhotoCropper";
+import { WT_COUNTRIES, getCountryByCode } from "@/lib/countries";
 
 interface Academy {
   id: string;
@@ -101,6 +102,7 @@ export default function AthleteRegisterPage() {
   const [kukkiwonId, setKukkiwonId] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE">("MALE");
+  const [countryCode, setCountryCode] = useState("IND");
   const [academyName, setAcademyName] = useState("");
   const [weightCategoryId, setWeightCategoryId] = useState("");
 
@@ -129,6 +131,8 @@ export default function AthleteRegisterPage() {
     fullName: string;
     academyName: string;
     weightCategoryName: string;
+    countryCode?: string;
+    countryName?: string;
     athleteAccessToken?: string;
     cardRole?: string;
   } | null>(null);
@@ -187,9 +191,10 @@ export default function AthleteRegisterPage() {
         const res = await fetch(`/api/athletes/check-kukkiwon?kukkiwonId=${encodeURIComponent(trimmed)}`);
         const data = await res.json();
         if (data.success) {
+          const isAvail = Boolean(data.data.available ?? data.data.isAvailable);
           setKukkiwonStatus({
             checked: true,
-            available: data.data.available,
+            available: isAvail,
             message: data.data.message,
           });
         }
@@ -211,7 +216,7 @@ export default function AthleteRegisterPage() {
       setError("Kukkiwon ID is required.");
       return;
     }
-    if (kukkiwonStatus.checked && !kukkiwonStatus.available) {
+    if (kukkiwonStatus.checked && kukkiwonStatus.available === false) {
       setError("This Kukkiwon ID is already registered in the system.");
       return;
     }
@@ -246,6 +251,8 @@ export default function AthleteRegisterPage() {
       formData.append("kukkiwonId", kukkiwonId.trim().toUpperCase());
       formData.append("fullName", fullName.trim());
       formData.append("gender", gender);
+      formData.append("countryCode", countryCode);
+      formData.append("countryName", getCountryByCode(countryCode).name);
       formData.append("academyName", academyName.trim().toUpperCase());
       formData.append("weightCategoryId", weightCategoryId);
       formData.append("cardRole", cardRole);
@@ -355,6 +362,13 @@ export default function AthleteRegisterPage() {
               <span className="font-semibold text-slate-900">{successResult.fullName}</span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
+              <span className="text-slate-500 font-medium">Country (WT)</span>
+              <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <span>{getCountryByCode(countryCode).flagEmoji}</span>
+                <span>{getCountryByCode(countryCode).name} ({countryCode})</span>
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
               <span className="text-slate-500 font-medium">Academy</span>
               <span className="text-slate-800 font-semibold">{successResult.academyName}</span>
             </div>
@@ -451,6 +465,10 @@ export default function AthleteRegisterPage() {
                 <span className="font-mono text-xs bg-slate-100 border border-slate-200 text-slate-800 px-2.5 py-1 rounded-md">
                   KUKKIWON ID: {kukkiwonId.toUpperCase()}
                 </span>
+                <span className="text-xs bg-slate-100 border border-slate-200 text-slate-800 px-2.5 py-1 rounded-md font-semibold flex items-center gap-1">
+                  <span>{getCountryByCode(countryCode).flagEmoji}</span>
+                  <span>{countryCode}</span>
+                </span>
                 <span className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-md">
                   {gender}
                 </span>
@@ -468,6 +486,14 @@ export default function AthleteRegisterPage() {
             <div className="flex justify-between py-1 border-b border-slate-200">
               <span className="text-slate-500">Kukkiwon ID</span>
               <span className="font-mono font-bold text-slate-900">{kukkiwonId.toUpperCase()}</span>
+            </div>
+
+            <div className="flex justify-between py-1 border-b border-slate-200">
+              <span className="text-slate-500">Representing Country</span>
+              <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <span>{getCountryByCode(countryCode).flagEmoji}</span>
+                <span>{getCountryByCode(countryCode).name} ({countryCode})</span>
+              </span>
             </div>
 
             <div className="flex justify-between py-1 border-b border-slate-200">
@@ -664,6 +690,39 @@ export default function AthleteRegisterPage() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Country (World Taekwondo) <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  >
+                    {WT_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flagEmoji} {c.name} ({c.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Full Name (As on Official Certificate) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Kang Hyun-Woo or Abhishek Kumar"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Gender <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -691,20 +750,6 @@ export default function AthleteRegisterPage() {
                     </button>
                   </div>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Full Name (As on Official Certificate) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Kang Hyun-Woo or Abhishek Kumar"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
               </div>
             </div>
 
