@@ -44,63 +44,48 @@ interface DisciplineOption {
   key: DisciplineKey;
   title: string;
   subtitle: string;
-  fee: number;
 }
 
 const COMPETITION_DISCIPLINES: DisciplineOption[] = [
-  { key: "KYORUGI", title: "KYORUGI", subtitle: "Sparring", fee: 2500 },
-  { key: "POOMSAE", title: "POOMSAE", subtitle: "Official Forms", fee: 2500 },
-  { key: "SPEED_KICKING", title: "SPEED KICKING", subtitle: "Individual & Team", fee: 2500 },
-  { key: "E_BREAKING", title: "E-BREAKING", subtitle: "Electronic Impact", fee: 2500 },
-  { key: "VIRTUAL_TKD", title: "VIRTUAL TKD", subtitle: "VR Motion", fee: 2500 },
+  { key: "KYORUGI", title: "KYORUGI", subtitle: "Sparring" },
+  { key: "POOMSAE", title: "POOMSAE", subtitle: "Official Forms" },
+  { key: "SPEED_KICKING", title: "SPEED KICKING", subtitle: "Individual & Team" },
+  { key: "E_BREAKING", title: "E-BREAKING", subtitle: "Electronic Impact" },
+  { key: "VIRTUAL_TKD", title: "VIRTUAL TKD", subtitle: "VR Motion" },
 ];
 
 const RANK_OPTIONS = [
-  // Black Belt / Poom (Regular Championship)
-  { value: "1st Dan / Poom (Black Belt)", label: "1st Dan / Poom (Black Belt)", isRegular: true },
-  { value: "2nd Dan / Poom", label: "2nd Dan / Poom", isRegular: true },
-  { value: "3rd Dan / Poom", label: "3rd Dan / Poom", isRegular: true },
-  { value: "4th Dan / Poom", label: "4th Dan / Poom", isRegular: true },
-  { value: "5th Dan", label: "5th Dan", isRegular: true },
-  { value: "6th Dan", label: "6th Dan", isRegular: true },
-  { value: "7th Dan & Above", label: "7th Dan & Above", isRegular: true },
-  // Color Belts (Freshers Championship)
-  { value: "10th Kup (White Belt)", label: "10th Kup (White Belt)", isRegular: false },
-  { value: "9th Kup (Yellow Stripe)", label: "9th Kup (Yellow Stripe)", isRegular: false },
-  { value: "8th Kup (Yellow Belt)", label: "8th Kup (Yellow Belt)", isRegular: false },
-  { value: "7th Kup (Green Stripe)", label: "7th Kup (Green Stripe)", isRegular: false },
-  { value: "6th Kup (Green Belt)", label: "6th Kup (Green Belt)", isRegular: false },
-  { value: "5th Kup (Blue Stripe)", label: "5th Kup (Blue Stripe)", isRegular: false },
-  { value: "4th Kup (Blue Belt)", label: "4th Kup (Blue Belt)", isRegular: false },
-  { value: "3rd Kup (Red Stripe)", label: "3rd Kup (Red Stripe)", isRegular: false },
-  { value: "2nd Kup (Red Belt)", label: "2nd Kup (Red Belt)", isRegular: false },
-  { value: "1st Kup (Black Stripe)", label: "1st Kup (Black Stripe)", isRegular: false },
+  { value: "1st Dan / Poom (Black Belt)", label: "1st Dan / Poom (Black Belt)" },
+  { value: "2nd Dan / Poom", label: "2nd Dan / Poom" },
+  { value: "3rd Dan / Poom", label: "3rd Dan / Poom" },
+  { value: "4th Dan / Poom", label: "4th Dan / Poom" },
+  { value: "5th Dan", label: "5th Dan" },
+  { value: "6th Dan", label: "6th Dan" },
+  { value: "7th Dan & Above", label: "7th Dan & Above" },
+  { value: "10th Kup (White Belt)", label: "10th Kup (White Belt)" },
+  { value: "9th Kup (Yellow Stripe)", label: "9th Kup (Yellow Stripe)" },
+  { value: "8th Kup (Yellow Belt)", label: "8th Kup (Yellow Belt)" },
+  { value: "7th Kup (Green Stripe)", label: "7th Kup (Green Stripe)" },
+  { value: "6th Kup (Green Belt)", label: "6th Kup (Green Belt)" },
+  { value: "5th Kup (Blue Stripe)", label: "5th Kup (Blue Stripe)" },
+  { value: "4th Kup (Blue Belt)", label: "4th Kup (Blue Belt)" },
+  { value: "3rd Kup (Red Stripe)", label: "3rd Kup (Red Stripe)" },
+  { value: "2nd Kup (Red Belt)", label: "2nd Kup (Red Belt)" },
+  { value: "1st Kup (Black Stripe)", label: "1st Kup (Black Stripe)" },
 ];
 
 const VT_COMPETITION_TYPES = [
   {
-    id: "IND_FR" as const,
-    title: "Male/Female – Individual Freshers",
+    id: "INDIVIDUAL" as const,
+    title: "Male/Female – Individual",
     subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-IND-FR",
+    codePrefix: "VT-IND",
   },
   {
-    id: "IND_REG" as const,
-    title: "Male/Female – Individual Regular",
+    id: "MIX_GENDER" as const,
+    title: "Male/Female – Mix Gender Individual",
     subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-IND-REG",
-  },
-  {
-    id: "MIX_FR" as const,
-    title: "Male/Female – Mix Gender Individual Freshers",
-    subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-MIX-FR",
-  },
-  {
-    id: "MIX_REG" as const,
-    title: "Male/Female – Mix Gender Individual Regular",
-    subtitle: "Official World Taekwondo Virtual Format",
-    codePrefix: "VT-MIX-REG",
+    codePrefix: "VT-MIX",
   },
 ];
 
@@ -187,7 +172,7 @@ export default function AthleteRegisterPage() {
   const [rankGrade, setRankGrade] = useState("1st Dan / Poom (Black Belt)");
 
   // Discipline-specific selections
-  const [vtType, setVtType] = useState<"IND_REG" | "IND_FR" | "MIX_REG" | "MIX_FR">("IND_REG");
+  const [vtType, setVtType] = useState<"INDIVIDUAL" | "MIX_GENDER">("INDIVIDUAL");
   const [vtDivision, setVtDivision] = useState<"CHILD" | "SUBJUN" | "CADET" | "JUNIOR" | "SENIOR">("SENIOR");
   const [kyorugiDivision, setKyorugiDivision] = useState("SENIOR");
   const [kyorugiWeightId, setKyorugiWeightId] = useState("");
@@ -292,11 +277,6 @@ export default function AthleteRegisterPage() {
     loadOptions();
   }, []);
 
-  const isRegularRank = useMemo(() => {
-    const found = RANK_OPTIONS.find((r) => r.value === rankGrade);
-    return found ? found.isRegular : true;
-  }, [rankGrade]);
-
   const toggleDiscipline = (key: DisciplineKey) => {
     setSelectedDisciplines((prev) => {
       if (prev.includes(key)) {
@@ -308,35 +288,29 @@ export default function AthleteRegisterPage() {
     });
   };
 
-  // Sync rank status with Virtual Taekwondo default competition type
-  useEffect(() => {
-    if (!isRegularRank) {
-      if (vtType === "IND_REG") setVtType("IND_FR");
-      if (vtType === "MIX_REG") setVtType("MIX_FR");
-    } else {
-      if (vtType === "IND_FR") setVtType("IND_REG");
-      if (vtType === "MIX_FR") setVtType("MIX_REG");
-    }
-  }, [isRegularRank]);
-
   // Filtered Kyorugi Categories for Participant
   const filteredKyorugiCategories = useMemo(() => {
-    return weightCategories.filter((wc) => {
+    const list = weightCategories.filter((wc) => {
       if (wc.gender !== gender) return false;
-      const isTierMatch = isRegularRank
-        ? wc.code.startsWith("KY_REG_") && !wc.code.includes("TEAM")
-        : wc.code.startsWith("KY_FR_");
-      if (!isTierMatch) return false;
+      if (!wc.code.startsWith("KY_")) return false;
+      if (wc.code.includes("TEAM")) return false;
 
-      if (kyorugiDivision === "CHILDREN" && wc.division !== "SUB_CADET") return false;
-      if (kyorugiDivision === "SUB_JUNIOR" && wc.division !== "SUB_CADET") return false;
-      if (kyorugiDivision === "CADET" && wc.division !== "CADET") return false;
-      if (kyorugiDivision === "JUNIOR" && wc.division !== "JUNIOR") return false;
-      if (kyorugiDivision === "SENIOR" && wc.division !== "SENIOR") return false;
+      if (kyorugiDivision === "CHILDREN") return wc.code.includes("_CH_");
+      if (kyorugiDivision === "SUB_JUNIOR") return wc.code.includes("_SUBJR_");
+      if (kyorugiDivision === "CADET") return wc.division === "CADET";
+      if (kyorugiDivision === "JUNIOR") return wc.division === "JUNIOR";
+      if (kyorugiDivision === "SENIOR") return wc.division === "SENIOR";
 
       return true;
     });
-  }, [weightCategories, gender, isRegularRank, kyorugiDivision]);
+
+    const seen = new Set<string>();
+    return list.filter((item) => {
+      if (seen.has(item.name)) return false;
+      seen.add(item.name);
+      return true;
+    });
+  }, [weightCategories, gender, kyorugiDivision]);
 
   useEffect(() => {
     if (filteredKyorugiCategories.length > 0) {
@@ -349,10 +323,10 @@ export default function AthleteRegisterPage() {
 
   // Filtered Poomsae Categories
   const filteredPoomsaeCategories = useMemo(() => {
-    return weightCategories.filter((wc) => {
+    const list = weightCategories.filter((wc) => {
       if (poomsaeType === "INDIVIDUAL") {
         if (wc.gender !== gender) return false;
-        return isRegularRank ? wc.code.startsWith("POOM_REG_IND_") : wc.code.startsWith("POOM_FR_IND_");
+        return wc.code.startsWith("POOM_") && wc.code.includes("_IND_");
       }
       if (poomsaeType === "MIX_PAIR") {
         return wc.code.includes("PAIR");
@@ -362,7 +336,14 @@ export default function AthleteRegisterPage() {
       }
       return wc.code.startsWith("POOM_");
     });
-  }, [weightCategories, gender, isRegularRank, poomsaeType]);
+
+    const seen = new Set<string>();
+    return list.filter((item) => {
+      if (seen.has(item.name)) return false;
+      seen.add(item.name);
+      return true;
+    });
+  }, [weightCategories, gender, poomsaeType]);
 
   useEffect(() => {
     if (filteredPoomsaeCategories.length > 0) {
@@ -375,7 +356,7 @@ export default function AthleteRegisterPage() {
 
   // Dynamic active categories list across all selected disciplines
   const activeCategories = useMemo(() => {
-    const list: { discipline: string; name: string; id: string; fee: number }[] = [];
+    const list: { discipline: string; name: string; id: string }[] = [];
 
     // 1. Kyorugi
     if (selectedDisciplines.includes("KYORUGI")) {
@@ -385,24 +366,22 @@ export default function AthleteRegisterPage() {
           discipline: "Kyorugi (Sparring)",
           name: cat.name,
           id: cat.id,
-          fee: 2500,
         });
       }
     }
 
     // 2. Virtual Taekwondo
     if (selectedDisciplines.includes("VIRTUAL_TKD")) {
-      const typeObj = VT_COMPETITION_TYPES.find((t) => t.id === vtType) || VT_COMPETITION_TYPES[1];
-      const expectedCode = `${typeObj.codePrefix}-${vtDivision}`;
+      const typeObj = VT_COMPETITION_TYPES.find((t) => t.id === vtType) || VT_COMPETITION_TYPES[0];
       const cat =
-        weightCategories.find((w) => w.code === expectedCode) ||
+        weightCategories.find((w) => w.code.startsWith(typeObj.codePrefix) && w.code.endsWith(vtDivision)) ||
+        weightCategories.find((w) => w.code.startsWith(typeObj.codePrefix)) ||
         weightCategories.find((w) => w.code.startsWith("VT-"));
       if (cat) {
         list.push({
           discipline: "Virtual Taekwondo",
           name: cat.name,
           id: cat.id,
-          fee: 2500,
         });
       }
     }
@@ -415,7 +394,6 @@ export default function AthleteRegisterPage() {
           discipline: "Recognised Poomsae",
           name: cat.name,
           id: cat.id,
-          fee: 2500,
         });
       }
     }
@@ -433,7 +411,6 @@ export default function AthleteRegisterPage() {
           discipline: "Speed Kicking",
           name: cat.name,
           id: cat.id,
-          fee: 2500,
         });
       }
     }
@@ -451,7 +428,6 @@ export default function AthleteRegisterPage() {
           discipline: "Electronic Breaking (Kyukpa)",
           name: cat.name,
           id: cat.id,
-          fee: 2500,
         });
       }
     }
@@ -479,8 +455,6 @@ export default function AthleteRegisterPage() {
     }
     return additional.join(" • ");
   }, [activeCategories, secondaryEvent]);
-
-  const totalFee = selectedDisciplines.length * 2500;
 
   // Real-time Kukkiwon check for participant
   useEffect(() => {
@@ -843,41 +817,24 @@ export default function AthleteRegisterPage() {
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200">
                   <span className="text-slate-500">Competitor Rank</span>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900">{rankGrade}</span>
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-                      isRegularRank
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}>
-                      {isRegularRank ? "REGULAR" : "FRESHERS"}
-                    </span>
-                  </div>
+                  <span className="font-bold text-slate-900">{rankGrade}</span>
                 </div>
                 <div className="flex justify-between py-1 border-b border-slate-200">
                   <span className="text-slate-500">Affiliated Academy / Club</span>
                   <span className="font-semibold text-slate-900 uppercase">{academyName}</span>
                 </div>
                 <div className="py-2 border-b border-slate-200 space-y-1.5">
-                  <div className="flex justify-between items-center text-slate-500 font-medium">
+                  <div className="text-slate-500 font-medium">
                     <span>Registered Events ({activeCategories.length})</span>
-                    <span>Fee</span>
                   </div>
                   {activeCategories.map((cat, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-2.5">
-                      <div>
-                        <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">
-                          {cat.discipline}
-                        </span>
-                        <span className="font-bold text-slate-900">{cat.name}</span>
-                      </div>
-                      <span className="font-mono font-bold text-slate-800">₹{cat.fee.toLocaleString("en-IN")}</span>
+                    <div key={idx} className="bg-white border border-slate-200 rounded-xl p-2.5">
+                      <span className="text-[10px] font-extrabold text-blue-700 uppercase tracking-wider block">
+                        {cat.discipline}
+                      </span>
+                      <span className="font-bold text-slate-900">{cat.name}</span>
                     </div>
                   ))}
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-200 bg-blue-50/70 -mx-5 px-5 rounded-lg">
-                  <span className="font-bold text-slate-800 uppercase tracking-wider">Total Competition Entry Fee</span>
-                  <span className="font-mono font-extrabold text-blue-700 text-sm">₹{totalFee.toLocaleString("en-IN")}</span>
                 </div>
               </>
             )}
@@ -1539,9 +1496,6 @@ export default function AthleteRegisterPage() {
                       <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
                         {selectedDisciplines.length} {selectedDisciplines.length === 1 ? "EVENT" : "EVENTS"} SELECTED
                       </span>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">
-                        TOTAL FEE: ₹{totalFee.toLocaleString("en-IN")}
-                      </span>
                     </div>
                   </div>
 
@@ -1569,12 +1523,9 @@ export default function AthleteRegisterPage() {
                               {isSelected && <Check className="w-2.5 h-2.5 stroke-[3]" />}
                             </div>
                           </div>
-                          <div className="flex items-end justify-between w-full pt-3">
+                          <div className="pt-3">
                             <span className={`text-[11px] ${isSelected ? "text-blue-700 font-semibold" : "text-slate-500 font-medium"}`}>
                               {d.subtitle}
-                            </span>
-                            <span className="text-xs font-bold text-slate-800">
-                              ₹{d.fee.toLocaleString("en-IN")}
                             </span>
                           </div>
                         </button>
@@ -1585,43 +1536,25 @@ export default function AthleteRegisterPage() {
 
                 {/* 2. COMPETITOR BELT / RANK GRADE */}
                 <div className="space-y-2 bg-slate-50/50 border border-slate-200 rounded-2xl p-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <Award className="w-4 h-4 text-blue-600" />
-                      COMPETITOR BELT / RANK GRADE <span className="text-red-500">*</span>
-                    </label>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${
-                      isRegularRank
-                        ? "bg-blue-50 text-blue-700 border-blue-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}>
-                      {isRegularRank ? "BLACK BELT / POOM (REGULAR)" : "COLOR BELT (FRESHERS)"}
-                    </span>
-                  </div>
+                  <label className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <Award className="w-4 h-4 text-blue-600" />
+                    COMPETITOR BELT / RANK GRADE <span className="text-red-500">*</span>
+                  </label>
 
                   <select
                     value={rankGrade}
                     onChange={(e) => setRankGrade(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                   >
-                    <optgroup label="Black Belt / Poom (Regular Championship)">
-                      {RANK_OPTIONS.filter((r) => r.isRegular).map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                    <optgroup label="Color Belts (Freshers Championship)">
-                      {RANK_OPTIONS.filter((r) => !r.isRegular).map((r) => (
-                        <option key={r.value} value={r.value}>
-                          {r.label}
-                        </option>
-                      ))}
-                    </optgroup>
+                    {RANK_OPTIONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
                   </select>
 
                   <p className="text-[11px] text-slate-500">
-                    Select your official Kukkiwon Dan/Poom rank or Color Belt grade. Black Belts / Poom must hold an authentic Kukkiwon Dan or Poom certificate.
+                    Select your official Kukkiwon Dan/Poom rank or Color Belt grade.
                   </p>
                 </div>
 
@@ -1630,16 +1563,11 @@ export default function AthleteRegisterPage() {
                 {/* A. VIRTUAL TAEKWONDO EVENT DETAILS */}
                 {selectedDisciplines.includes("VIRTUAL_TKD") && (
                   <div className="bg-white border-2 border-blue-500/40 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Award className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          VIRTUAL TAEKWONDO EVENT DETAILS
-                        </h4>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        FEE: ₹2,500
-                      </span>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Award className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        VIRTUAL TAEKWONDO EVENT DETAILS
+                      </h4>
                     </div>
 
                     <div className="space-y-2">
@@ -1714,16 +1642,11 @@ export default function AthleteRegisterPage() {
                 {/* B. KYORUGI (SPARRING) EVENT DETAILS */}
                 {selectedDisciplines.includes("KYORUGI") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Swords className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          KYORUGI (SPARRING) EVENT DETAILS
-                        </h4>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        FEE: ₹2,500
-                      </span>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Swords className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        KYORUGI (SPARRING) EVENT DETAILS
+                      </h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1767,16 +1690,11 @@ export default function AthleteRegisterPage() {
                 {/* C. RECOGNISED POOMSAE EVENT DETAILS */}
                 {selectedDisciplines.includes("POOMSAE") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          RECOGNISED POOMSAE EVENT DETAILS
-                        </h4>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        FEE: ₹2,500
-                      </span>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Layers className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        RECOGNISED POOMSAE EVENT DETAILS
+                      </h4>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1818,16 +1736,11 @@ export default function AthleteRegisterPage() {
                 {/* D. SPEED KICKING EVENT DETAILS */}
                 {selectedDisciplines.includes("SPEED_KICKING") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          SPEED KICKING EVENT DETAILS
-                        </h4>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        FEE: ₹2,500
-                      </span>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Activity className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        SPEED KICKING EVENT DETAILS
+                      </h4>
                     </div>
 
                     <div>
@@ -1851,16 +1764,11 @@ export default function AthleteRegisterPage() {
                 {/* E. ELECTRONIC BREAKING (KYUKPA) EVENT DETAILS */}
                 {selectedDisciplines.includes("E_BREAKING") && (
                   <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4 text-blue-600" />
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
-                          ELECTRONIC BREAKING (KYUKPA) EVENT DETAILS
-                        </h4>
-                      </div>
-                      <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                        FEE: ₹2,500
-                      </span>
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                      <Shield className="w-4 h-4 text-blue-600" />
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 uppercase tracking-wider">
+                        ELECTRONIC BREAKING (KYUKPA) EVENT DETAILS
+                      </h4>
                     </div>
 
                     <div>
