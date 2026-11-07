@@ -359,16 +359,26 @@ const categories = [
   }),
 ];
 
+function formatWeightName(name) {
+  if (!name) return name;
+  return name
+    .replace(/\bUnder\s+(\d+)\s*kg/gi, (m, p) => `U ${p}kg`)
+    .replace(/\bOver\s+(\d+)\s*kg/gi, (m, p) => `O ${p}kg`)
+    .replace(/\s+-(\d+)\s*kg/gi, (m, p) => ` U ${p}kg`)
+    .replace(/\s+\+(\d+)\s*kg/gi, (m, p) => ` O ${p}kg`);
+}
+
 async function seed() {
   console.log(`Starting to seed ${categories.length} tournament categories...`);
   let upserted = 0;
   for (const cat of categories) {
+    const formattedName = formatWeightName(cat.name);
     await prisma.weightCategory.upsert({
       where: { code: cat.code },
       update: {
         division: cat.division,
         gender: cat.gender,
-        name: cat.name,
+        name: formattedName,
         minWeightKg: cat.minWeightKg,
         maxWeightKg: cat.maxWeightKg,
         isActive: true,
@@ -377,7 +387,7 @@ async function seed() {
         code: cat.code,
         division: cat.division,
         gender: cat.gender,
-        name: cat.name,
+        name: formattedName,
         minWeightKg: cat.minWeightKg,
         maxWeightKg: cat.maxWeightKg,
         isActive: true,
