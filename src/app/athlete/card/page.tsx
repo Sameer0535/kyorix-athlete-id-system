@@ -87,7 +87,7 @@ function CardDownloadContent() {
     const tokenToUse = (secretToken || accessToken).trim();
 
     if (!trimmedId) {
-      setError("Please enter your Kukkiwon ID or Registration Number.");
+      setError("Please enter your Athlete ID or Registration Number.");
       return;
     }
 
