@@ -86,6 +86,7 @@ export async function executeBulkExport(
       athlete: {
         include: { academy: true },
       },
+      academy: true,
       weightCategory: true,
       photograph: true,
       idCard: true,
@@ -119,7 +120,7 @@ export async function executeBulkExport(
 
     const reg = registrations[i];
     const athlete = reg.athlete;
-    const academy = athlete.academy;
+    const academy = reg.academy || athlete.academy;
     const category = reg.weightCategory;
     const photo = reg.photograph;
 
@@ -139,8 +140,8 @@ export async function executeBulkExport(
         fullName: athlete.fullName,
         gender: athlete.gender,
         danOrPoom: athlete.danOrPoom,
-        academyName: academy.name,
-        academyCity: academy.city,
+        academyName: academy?.name || "Independent",
+        academyCity: academy?.city || "",
         weightCategoryName: category.name,
         division: category.division,
         photoStorageKey: photo.storageKey,

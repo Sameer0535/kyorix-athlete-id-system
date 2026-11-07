@@ -36,7 +36,7 @@ export default function AthletePortalHub() {
           Athlete Registration & Credential Portal
         </h1>
         <p className="text-slate-600 text-sm sm:text-base mt-2 max-w-2xl leading-relaxed">
-          Welcome to the official Kukkiwon Cup 2026 accreditation system powered by Kyorix Sports Technology. Register your details, select your badge type, track verification status, and retrieve your official credential.
+          Welcome to the official Championship 2026 accreditation system powered by Kyorix Sports Technology. Register your details, select your badge type, track verification status, and retrieve your official credential.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
@@ -48,7 +48,7 @@ export default function AthletePortalHub() {
               </div>
               <h2 className="text-lg font-bold text-slate-900 mb-2">1. New Registration</h2>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Submit your Kukkiwon ID, full name, academy, registered weight class, select from 4 official card roles, and upload your portrait photo.
+                Submit your Athlete ID, full name, academy, registered weight class, select from 4 official card roles, and upload your portrait photo.
               </p>
             </div>
             <Link
@@ -106,7 +106,7 @@ export default function AthletePortalHub() {
         </div>
         <div className="flex items-center gap-2">
           <Award className="w-4 h-4 text-amber-500" />
-          <span>Kukkiwon Taekwondo Championship Credentials</span>
+          <span>Official Championship Accreditation Credentials</span>
         </div>
       </div>
     </div>

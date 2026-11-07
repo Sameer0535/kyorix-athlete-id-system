@@ -1,51 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { UserCheck, CreditCard, Award, ShieldCheck, ArrowRight, Scale, Users, Trophy } from "lucide-react";
+import { UserCheck, CreditCard, Award, ShieldCheck, ArrowRight } from "lucide-react";
 
 export default function HomePage() {
-  const roles = [
-    {
-      role: "PARTICIPANT",
-      title: "Championship Participant",
-      icon: Trophy,
-      color: "border-blue-200 hover:border-blue-400 bg-white",
-      badgeBg: "bg-blue-600 text-white",
-      iconBg: "bg-blue-50 text-blue-600",
-      description: "Official accreditation badge for athletes competing in the Open International Kukkiwon Cup 2026.",
-      features: ["Athlete accreditation", "Weigh-in verification", "Competition ring access"],
-    },
-    {
-      role: "REFEREE",
-      title: "Official Referee / Judge",
-      icon: Scale,
-      color: "border-cyan-200 hover:border-cyan-400 bg-white",
-      badgeBg: "bg-cyan-600 text-white",
-      iconBg: "bg-cyan-50 text-cyan-600",
-      description: "Accreditation badge for certified international and national referees and ring officials.",
-      features: ["Official referee credential", "Scoring table access", "Technical committee entry"],
-    },
-    {
-      role: "COACH",
-      title: "Team Coach / Master",
-      icon: Award,
-      color: "border-red-200 hover:border-red-400 bg-white",
-      badgeBg: "bg-red-600 text-white",
-      iconBg: "bg-red-50 text-red-600",
-      description: "Official team coach pass granting floor and corner access for recognized academy masters.",
-      features: ["Corner coach authorization", "Athlete warm-up zone access", "Academy representation"],
-    },
-    {
-      role: "STAFF",
-      title: "Organising Staff",
-      icon: Users,
-      color: "border-amber-200 hover:border-amber-400 bg-white",
-      badgeBg: "bg-amber-600 text-white",
-      iconBg: "bg-amber-50 text-amber-600",
-      description: "Accreditation pass for operational personnel, medical crew, and committee coordinators.",
-      features: ["Operational area access", "Organising committee pass", "Event support badge"],
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col justify-between">
       {/* Top Header */}
@@ -103,13 +60,13 @@ export default function HomePage() {
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
             <Award className="w-3.5 h-3.5 text-blue-600" />
-            Open International Kukkiwon Cup 2026
+            Open International Championship 2026
           </div>
           <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-950 tracking-tight leading-tight">
             Official Championship <span className="text-blue-600">ID Card Accreditation</span>
           </h1>
           <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
-            Register your Kukkiwon credentials, select your official championship role, and download your accredited ID card. Powered by Kyorix Sports Technology.
+            Register your athlete credentials, select your official championship role, and download your accredited ID card. Powered by Kyorix Sports Technology.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -136,9 +93,9 @@ export default function HomePage() {
             <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-slate-900 text-lg mb-2">Verified Kukkiwon Identity</h3>
+            <h3 className="font-bold text-slate-900 text-lg mb-2">Verified Athlete Identity</h3>
             <p className="text-slate-600 text-sm leading-relaxed">
-              Automatic validation prevents duplicate Kukkiwon numbers and verifies academy affiliations across all 16 Olympic weight divisions.
+              Automatic validation prevents duplicate athlete identification numbers and verifies academy affiliations across all 16 Olympic weight divisions.
             </p>
           </div>
 
@@ -163,62 +120,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Accreditation Categories (No raw templates shown) */}
-        <section className="mb-16">
-          <div className="text-center max-w-2xl mx-auto mb-10">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-600">Accreditation Roles</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-950 mt-1">
-              Official Championship Categories
-            </h2>
-            <p className="text-slate-600 text-sm mt-2">
-              Select your championship category during registration. Your ID card will be verified and generated by the tournament committee.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {roles.map((r) => {
-              const IconComp = r.icon;
-              return (
-                <div
-                  key={r.role}
-                  className={`bg-white rounded-2xl border ${r.color} shadow-xs hover:shadow-md transition-all p-6 flex flex-col justify-between`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`w-12 h-12 rounded-xl ${r.iconBg} flex items-center justify-center`}>
-                        <IconComp className="w-6 h-6" />
-                      </div>
-                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider uppercase ${r.badgeBg} shadow-xs`}>
-                        {r.role}
-                      </span>
-                    </div>
-
-                    <h3 className="font-bold text-slate-900 text-base mb-2">{r.title}</h3>
-                    <p className="text-slate-600 text-xs leading-relaxed mb-4">{r.description}</p>
-
-                    <ul className="space-y-1.5 text-xs text-slate-500 mb-6">
-                      {r.features.map((feat, idx) => (
-                        <li key={idx} className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                          <span>{feat}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <Link
-                    href={`/athlete/register?role=${r.role}`}
-                    className="w-full text-center py-2.5 px-3 rounded-xl text-xs font-bold bg-slate-50 hover:bg-blue-50 text-blue-700 border border-blue-200 transition flex items-center justify-center gap-1.5"
-                  >
-                    Register as {r.role}
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
         {/* Steps to Receive Card */}
         <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-8 sm:p-10 mb-10">
           <div className="max-w-2xl mb-8">
@@ -234,7 +135,7 @@ export default function HomePage() {
               <div>
                 <h4 className="font-bold text-slate-900 text-sm mb-1">Fill Registration Details</h4>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Enter your Kukkiwon ID, full name, academy, registered weight category, and upload a clear portrait photo.
+                  Enter your Athlete ID, full name, academy, registered weight category, and upload a clear portrait photo.
                 </p>
               </div>
             </div>

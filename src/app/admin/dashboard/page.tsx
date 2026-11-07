@@ -227,7 +227,7 @@ export default async function AdminDashboardPage() {
               <thead>
                 <tr className="border-b border-slate-200 text-slate-500 text-[11px] uppercase bg-slate-50">
                   <th className="py-2.5 px-3 font-bold">Athlete</th>
-                  <th className="py-2.5 px-3 font-bold">Kukkiwon ID</th>
+                  <th className="py-2.5 px-3 font-bold">Athlete ID</th>
                   <th className="py-2.5 px-3 font-bold">Academy</th>
                   <th className="py-2.5 px-3 font-bold">Role / Weight</th>
                   <th className="py-2.5 px-3 font-bold">Status</th>

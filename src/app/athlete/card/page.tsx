@@ -207,7 +207,7 @@ function CardDownloadContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Kukkiwon ID / Reg Number
+              Athlete ID / Reg Number
             </label>
             <div className="relative">
               <input
@@ -274,7 +274,7 @@ function CardDownloadContent() {
               <XCircle className="w-12 h-12 text-slate-400 mx-auto" />
               <h3 className="text-base font-bold text-slate-800">Athlete Record Not Found</h3>
               <p className="text-xs text-slate-500 max-w-md mx-auto">
-                {result.message || "Please check your Kukkiwon ID or submit a new registration."}
+                {result.message || "Please check your Athlete ID or submit a new registration."}
               </p>
               <Link
                 href="/athlete/register"
@@ -304,7 +304,7 @@ function CardDownloadContent() {
                     )}
                   </div>
                   <div className="text-xs text-slate-500 mt-1 flex items-center gap-3">
-                    <span>Kukkiwon ID: <strong className="text-blue-600 font-mono">{result.athlete.kukkiwonId}</strong></span>
+                    <span>Athlete ID: <strong className="text-blue-600 font-mono">{result.athlete.kukkiwonId}</strong></span>
                     <span>&bull;</span>
                     <span>Rank: <strong className="text-slate-700">{result.athlete.danOrPoom || "Registered Competitor"}</strong></span>
                   </div>
@@ -482,7 +482,7 @@ export default function AthleteCardDownloadPage() {
         Official Athlete ID Card Download
       </h1>
       <p className="text-xs sm:text-sm text-slate-600 mt-1 mb-8">
-        Authenticate using your Kukkiwon ID and registration Access Code to preview and download your official championship credential generated in your selected template format.
+        Authenticate using your Athlete ID and registration Access Code to preview and download your official championship credential generated in your selected template format.
       </p>
 
       <Suspense fallback={<div className="text-center py-12 text-slate-400 text-sm">Loading credential engine...</div>}>
