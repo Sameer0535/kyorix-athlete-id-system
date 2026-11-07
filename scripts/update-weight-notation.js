@@ -4,10 +4,13 @@ const prisma = new PrismaClient();
 function formatWeightName(name) {
   if (!name) return name;
   return name
+    .replace(/\s*\((Fin|Fly|Bantam|Feather|Light|Welter|Middle|Heavy|Heavyweight|Light Middle|Light Heavy)\)/gi, "")
     .replace(/\bUnder\s+(\d+)\s*kg/gi, (m, p) => `U ${p}kg`)
     .replace(/\bOver\s+(\d+)\s*kg/gi, (m, p) => `O ${p}kg`)
     .replace(/\s+-(\d+)\s*kg/gi, (m, p) => ` U ${p}kg`)
-    .replace(/\s+\+(\d+)\s*kg/gi, (m, p) => ` O ${p}kg`);
+    .replace(/\s+\+(\d+)\s*kg/gi, (m, p) => ` O ${p}kg`)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function run() {
@@ -35,3 +38,4 @@ run()
     console.error("Error updating weight notation:", err);
     process.exit(1);
   });
+

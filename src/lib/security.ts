@@ -130,7 +130,8 @@ export async function authenticateAdminRequest(
 ): Promise<{ errorResponse?: ReturnType<typeof apiError>; session?: AdminSessionPayload }> {
   const authHeader = req.headers.get("authorization");
   const cookieToken = req.cookies.get("kyorix_admin_session")?.value;
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : cookieToken;
+  const urlToken = req.nextUrl?.searchParams?.get("adminToken") || req.nextUrl?.searchParams?.get("token");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : (cookieToken || urlToken);
 
   if (!token) {
     return {

@@ -89,6 +89,7 @@ const TEMPLATE_OPTIONS: {
 
 const DISCIPLINE_GROUPS = [
   { id: "ALL", label: "All Disciplines" },
+  { id: "VIRTUAL_TKD", label: "Virtual Taekwondo (Mixed/Open)" },
   { id: "KY_REG", label: "Kyorugi (Regular) WT" },
   { id: "KY_FR", label: "Kyorugi (Freshers)" },
   { id: "POOM_REG_IND", label: "Poomsae Individual (Regular)" },
@@ -220,12 +221,16 @@ export default function AthleteRegisterPage() {
       // Don't show system official role categories in participant dropdown
       if (wc.code.startsWith("OFFICIAL_")) return false;
 
+      const isVirtualTkd = wc.code.startsWith("VT-");
+      const isMixedGenderCategory = wc.code.includes("PAIR") || isVirtualTkd;
+
       // Filter by gender if category is gender-specific
-      if (wc.gender !== gender && !wc.code.includes("PAIR")) {
+      if (wc.gender !== gender && !isMixedGenderCategory) {
         return false;
       }
 
       if (selectedDiscipline === "ALL") return true;
+      if (selectedDiscipline === "VIRTUAL_TKD") return isVirtualTkd;
       if (selectedDiscipline === "KY_REG") return wc.code.startsWith("KY_REG_") && !wc.code.includes("TEAM");
       if (selectedDiscipline === "KY_FR") return wc.code.startsWith("KY_FR_");
       if (selectedDiscipline === "POOM_REG_IND") return wc.code.startsWith("POOM_REG_IND_");
@@ -1278,7 +1283,7 @@ export default function AthleteRegisterPage() {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Registered Category ({gender}) <span className="text-red-500">*</span>
+                      Registered Category {selectedDiscipline === "VIRTUAL_TKD" ? "(Open / Mixed)" : `(${gender})`} <span className="text-red-500">*</span>
                     </label>
                     <select
                       required

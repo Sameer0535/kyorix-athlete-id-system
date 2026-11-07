@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Activity,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
 
 interface CardRegistrationItem {
@@ -132,6 +133,9 @@ export default function AdminIdCardsPage() {
 
   // Preview Modal
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
 
   // Inspect Failed Records Modal
@@ -395,9 +399,44 @@ export default function AdminIdCardsPage() {
     }
   };
 
-  const handleOpenPreview = (item: CardRegistrationItem) => {
+  const handleOpenPreview = async (item: CardRegistrationItem) => {
     setPreviewTitle(`${item.athlete.fullName} (${item.athlete.kukkiwonId})`);
-    setPreviewUrl(`/api/admin/id-cards/preview?registrationId=${item.id}`);
+    const directUrl = `/api/admin/id-cards/preview?registrationId=${item.id}`;
+    setPreviewUrl(directUrl);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+    }
+    try {
+      const res = await fetch(directUrl);
+      if (!res.ok) {
+        let msg = `Server returned status ${res.status}`;
+        try {
+          const json = await res.json();
+          if (json.error?.message) msg = json.error.message;
+        } catch {}
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const bUrl = URL.createObjectURL(blob);
+      setPreviewBlobUrl(bUrl);
+    } catch (err: unknown) {
+      setPreviewError(err instanceof Error ? err.message : "Failed to load ID card preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
+    }
+    setPreviewUrl(null);
+    setPreviewError(null);
+    setPreviewLoading(false);
   };
 
   return (
@@ -999,27 +1038,31 @@ export default function AdminIdCardsPage() {
                   Official Credential Preview &bull; <span className="text-blue-700">{previewTitle}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
-                    title="Open full page in new tab"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open Tab
-                  </a>
-                  <a
-                    href={previewUrl}
-                    download="athlete-id-card.pdf"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition"
-                    title="Download card PDF"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    Download
-                  </a>
+                  {(previewBlobUrl || previewUrl) && (
+                    <>
+                      <a
+                        href={previewBlobUrl || previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+                        title="Open full page in new tab"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open Tab
+                      </a>
+                      <a
+                        href={previewBlobUrl || previewUrl}
+                        download={`${previewTitle.replace(/[^a-zA-Z0-9_-]/g, "_")}_badge.pdf`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition"
+                        title="Download card PDF"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download
+                      </a>
+                    </>
+                  )}
                   <button
-                    onClick={() => setPreviewUrl(null)}
+                    onClick={handleClosePreview}
                     className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-lg font-bold transition ml-1"
                   >
                     &times;
@@ -1029,31 +1072,65 @@ export default function AdminIdCardsPage() {
 
               {/* Large high-res viewer container */}
               <div className="flex-1 w-full min-h-0 my-3 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-inner flex items-center justify-center">
-                <object
-                  data={previewUrl}
-                  type="application/pdf"
-                  className="w-full h-full rounded-xl border-0"
-                >
-                  <iframe
-                    src={previewUrl}
-                    title="Official Card PDF"
-                    className="w-full h-full rounded-xl border-0"
-                  >
-                    <div className="p-8 text-center space-y-3">
-                      <p className="text-xs text-slate-600 font-medium">
-                        Unable to render PDF preview directly inside your browser window.
-                      </p>
+                {previewLoading ? (
+                  <div className="flex flex-col items-center justify-center space-y-3 p-8 text-center">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    <p className="text-xs font-bold text-slate-700">Rendering High-Resolution Badge...</p>
+                    <p className="text-[11px] text-slate-500">Composing official Kukkiwon and Kyorix championship layout</p>
+                  </div>
+                ) : previewError ? (
+                  <div className="p-8 text-center space-y-4 max-w-md">
+                    <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold text-slate-900">Preview Generation Error</h3>
+                      <p className="text-xs text-red-600">{previewError}</p>
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
                       <a
                         href={previewUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl"
+                        className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 shadow-sm transition"
                       >
-                        <ExternalLink className="w-4 h-4" /> Open PDF in New Window
+                        <ExternalLink className="w-3.5 h-3.5" /> Direct URL Link
                       </a>
+                      <button
+                        onClick={handleClosePreview}
+                        className="px-4 py-2 bg-slate-200 text-slate-700 text-xs font-bold rounded-xl hover:bg-slate-300 transition"
+                      >
+                        Close
+                      </button>
                     </div>
-                  </iframe>
-                </object>
+                  </div>
+                ) : previewBlobUrl ? (
+                  <object
+                    data={previewBlobUrl}
+                    type="application/pdf"
+                    className="w-full h-full rounded-xl border-0"
+                  >
+                    <iframe
+                      src={previewBlobUrl}
+                      title="Official Card PDF"
+                      className="w-full h-full rounded-xl border-0"
+                    >
+                      <div className="p-8 text-center space-y-3">
+                        <p className="text-xs text-slate-600 font-medium">
+                          Unable to render PDF preview directly inside your browser window.
+                        </p>
+                        <a
+                          href={previewBlobUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl"
+                        >
+                          <ExternalLink className="w-4 h-4" /> Open PDF in New Window
+                        </a>
+                      </div>
+                    </iframe>
+                  </object>
+                ) : null}
               </div>
 
               <div className="flex justify-between items-center pt-2 border-t border-slate-100 shrink-0">
@@ -1061,7 +1138,7 @@ export default function AdminIdCardsPage() {
                   CR80 Official Championship Badge Format (1:1.4 aspect ratio)
                 </div>
                 <button
-                  onClick={() => setPreviewUrl(null)}
+                  onClick={handleClosePreview}
                   className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
                 >
                   Close Preview
