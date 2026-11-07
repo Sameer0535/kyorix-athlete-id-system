@@ -68,3 +68,4 @@ seedVirtualTkd()
     console.error("Error upserting Virtual Taekwondo categories:", err);
     process.exit(1);
   });
+
