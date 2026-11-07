@@ -516,7 +516,7 @@ export default function AdminIdCardsPage() {
                   <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                   <input
                     type="text"
-                    placeholder="Search Athlete ID or Athlete Name..."
+                    placeholder="Search Kukkiwon ID or Athlete Name..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white"
@@ -581,7 +581,7 @@ export default function AdminIdCardsPage() {
                         />
                       </th>
                       <th className="p-3">Athlete</th>
-                      <th className="p-3">Athlete ID</th>
+                      <th className="p-3">Kukkiwon ID</th>
                       <th className="p-3">Role / Template</th>
                       <th className="p-3">Academy</th>
                       <th className="p-3">Weight Category</th>
@@ -908,7 +908,7 @@ export default function AdminIdCardsPage() {
                       <div>
                         <div className="font-bold text-slate-900">{rec.athleteName}</div>
                         <div className="text-[11px] text-blue-600 font-mono">
-                          Athlete ID: {rec.kukkiwonId}
+                          Kukkiwon ID: {rec.kukkiwonId}
                         </div>
                         <div className="text-[11px] text-red-700 mt-1">
                           Reason: {rec.reason}

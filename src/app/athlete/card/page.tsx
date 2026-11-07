@@ -87,7 +87,7 @@ function CardDownloadContent() {
     const tokenToUse = (secretToken || accessToken).trim();
 
     if (!trimmedId) {
-      setError("Please enter your Athlete ID or Registration Number.");
+      setError("Please enter your Kukkiwon ID or Registration Number.");
       return;
     }
 
@@ -207,14 +207,14 @@ function CardDownloadContent() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-              Athlete ID / Reg Number
+              Kukkiwon ID / Reg Number
             </label>
             <div className="relative">
               <input
                 type="text"
                 value={kukkiwonId}
                 onChange={(e) => setKukkiwonId(e.target.value)}
-                placeholder="e.g. 05872134 or REG-2026-0001"
+                placeholder="e.g. KKWID-261103-0731-2765 or REG-2026-0001"
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition uppercase font-semibold"
                 disabled={searching}
               />

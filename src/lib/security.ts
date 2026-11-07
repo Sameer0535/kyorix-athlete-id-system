@@ -15,8 +15,8 @@ export function validateKukkiwonId(id: string): { valid: boolean; normalized?: s
   }
 
   const trimmed = id.trim().toUpperCase();
-  if (trimmed.length < 5 || trimmed.length > 20) {
-    return { valid: false, error: "Kukkiwon ID must be between 5 and 20 characters." };
+  if (trimmed.length < 4 || trimmed.length > 32) {
+    return { valid: false, error: "Kukkiwon ID must be between 4 and 32 characters." };
   }
 
   // Allow alphanumeric characters and standard hyphen/underscore

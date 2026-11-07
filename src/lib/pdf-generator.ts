@@ -67,9 +67,10 @@ export async function drawAthleteCard(
   data: AthleteCardData,
   config: ChampionshipBrandingConfig = DEFAULT_BRANDING
 ) {
-  // If an official portrait template role was selected, render onto that template
-  if (data.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(data.cardRole.toUpperCase())) {
-    await drawPortraitTemplateCard(doc, page, data);
+  // If an official portrait template role was selected (default: PARTICIPANT), render onto that template
+  const resolvedRole = (data.cardRole || "PARTICIPANT").toUpperCase();
+  if (["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(resolvedRole)) {
+    await drawPortraitTemplateCard(doc, page, { ...data, cardRole: resolvedRole });
     return;
   }
 
@@ -398,7 +399,62 @@ export async function drawAthleteCard(
 }
 
 /**
- * Draws an official championship portrait ID badge onto a template image
+ * Draws a sharp vector Indian National Flag (Tiranga) with saffron, white, green stripes and Ashoka Chakra
+ */
+function drawIndianFlag(page: any, x: number, y: number, width = 14, height = 9.5) {
+  const stripeH = height / 3;
+  // Saffron (top)
+  page.drawRectangle({
+    x,
+    y: y + stripeH * 2,
+    width,
+    height: stripeH,
+    color: rgb(1.0, 0.60, 0.20),
+  });
+  // White (middle)
+  page.drawRectangle({
+    x,
+    y: y + stripeH,
+    width,
+    height: stripeH,
+    color: rgb(1.0, 1.0, 1.0),
+  });
+  // Green (bottom)
+  page.drawRectangle({
+    x,
+    y,
+    width,
+    height: stripeH,
+    color: rgb(0.075, 0.533, 0.031),
+  });
+  // Navy Ashoka Chakra center circle
+  page.drawCircle({
+    x: x + width / 2,
+    y: y + height / 2,
+    size: 1.15,
+    color: rgb(0.0, 0.0, 0.50),
+  });
+  // Thin border
+  page.drawRectangle({
+    x,
+    y,
+    width,
+    height,
+    borderColor: rgb(0.75, 0.75, 0.75),
+    borderWidth: 0.4,
+  });
+}
+
+// Precise bounding coordinates of photo frames inside each official championship template
+const PHOTO_FRAME_COORDS: Record<string, { xRatio: number; yTopRatio: number; wRatio: number; hRatio: number }> = {
+  PARTICIPANT: { xRatio: 0.702, yTopRatio: 0.338, wRatio: 0.226, hRatio: 0.185 },
+  COACH: { xRatio: 0.696, yTopRatio: 0.304, wRatio: 0.246, hRatio: 0.218 },
+  REFEREE: { xRatio: 0.672, yTopRatio: 0.306, wRatio: 0.285, hRatio: 0.216 },
+  STAFF: { xRatio: 0.705, yTopRatio: 0.306, wRatio: 0.250, hRatio: 0.216 },
+};
+
+/**
+ * Draws an official championship portrait ID badge onto a template image matching the official format
  */
 export async function drawPortraitTemplateCard(
   doc: PDFDocument,
@@ -434,12 +490,12 @@ export async function drawPortraitTemplateCard(
     });
   }
 
-  // 2. Draw Athlete Photograph in designated photo box
-  // In template: x: 60.4%, y: 30% from top, w: 36.5%, h: 24.0%
-  const photoX = cardWidth * 0.604;
-  const photoY = cardHeight * (1 - 0.300 - 0.245);
-  const photoW = cardWidth * 0.365;
-  const photoH = cardHeight * 0.240;
+  // 2. Draw Athlete Photograph inside the exact designated frame
+  const coords = PHOTO_FRAME_COORDS[role] || PHOTO_FRAME_COORDS.PARTICIPANT;
+  const photoX = cardWidth * coords.xRatio;
+  const photoY = cardHeight * (1 - coords.yTopRatio - coords.hRatio);
+  const photoW = cardWidth * coords.wRatio;
+  const photoH = cardHeight * coords.hRatio;
 
   if (data.photoStorageKey) {
     try {
@@ -455,6 +511,7 @@ export async function drawPortraitTemplateCard(
       }
 
       if (embeddedPhoto) {
+        // White backdrop
         page.drawRectangle({
           x: photoX,
           y: photoY,
@@ -462,15 +519,16 @@ export async function drawPortraitTemplateCard(
           height: photoH,
           color: rgb(1, 1, 1),
         });
+        // Render photo tightly inside inner box
         page.drawImage(embeddedPhoto, {
-          x: photoX + 1.5,
-          y: photoY + 1.5,
-          width: photoW - 3,
-          height: photoH - 3,
+          x: photoX + 0.5,
+          y: photoY + 0.5,
+          width: photoW - 1,
+          height: photoH - 1,
         });
       }
     } catch {
-      // Photo fallback
+      // Photo fallback placeholder
       page.drawRectangle({
         x: photoX,
         y: photoY,
@@ -485,93 +543,102 @@ export async function drawPortraitTemplateCard(
   const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
   const fontRegular = await doc.embedFont(StandardFonts.Helvetica);
 
-  const navyColor = rgb(0.04, 0.12, 0.30); // #0A1E4D
-  const darkGray = rgb(0.20, 0.25, 0.30);
-  const goldColor = rgb(0.78, 0.60, 0.15); // #C79A26
-  const blueColor = rgb(0.00, 0.40, 0.85); // #0066D9
+  // 4. Render Details Block strictly aligned to the official format
+  // Left side starts at x = 18 pt
+  let textY = cardHeight * 0.49;
 
-  // 4. Render Athlete Details in the open central area
-  let textY = cardHeight * 0.41;
+  // Line 1: IND + Indian Flag
+  page.drawText("IND", {
+    x: 18,
+    y: textY,
+    size: 8.5,
+    font: fontBold,
+    color: rgb(0.08, 0.12, 0.18),
+  });
+  drawIndianFlag(page, 42, textY - 1, 14, 9.5);
 
-  // ATHLETE FULL NAME (Large Bold)
-  const displayName = (data.fullName || "ATHLETE NAME").toUpperCase();
-  const fontSize = displayName.length > 22 ? 11 : displayName.length > 16 ? 13 : 15;
+  // Line 2: Full Name (Bold Uppercase Black)
+  textY -= 15;
+  const displayName = (data.fullName || "NAME").toUpperCase();
+  const nameFontSize = displayName.length > 24 ? 10.5 : displayName.length > 18 ? 12 : 13;
   page.drawText(displayName, {
     x: 18,
     y: textY,
-    size: fontSize,
+    size: nameFontSize,
     font: fontBold,
-    color: navyColor,
+    color: rgb(0.05, 0.08, 0.12),
   });
 
+  // Line 3: Academy Name (Bold Uppercase Navy #1D3557)
   textY -= 14;
-  // Kukkiwon ID Badge
-  page.drawRectangle({
-    x: 18,
-    y: textY - 2,
-    width: 140,
-    height: 14,
-    color: rgb(0.92, 0.95, 1.0),
-    borderColor: blueColor,
-    borderWidth: 0.75,
-  });
-  page.drawText(`KUKKIWON ID: ${data.kukkiwonId || "UNVERIFIED"}`, {
-    x: 22,
-    y: textY + 1.5,
-    size: 7.5,
-    font: fontBold,
-    color: blueColor,
-  });
-
-  textY -= 16;
-  // Academy Name
-  page.drawText("ACADEMY / CLUB", {
-    x: 18,
-    y: textY,
-    size: 6.5,
-    font: fontBold,
-    color: goldColor,
-  });
-  textY -= 10;
-  const acadName = data.academyName || "Independent Academy";
-  const acadFontSize = acadName.length > 28 ? 6.5 : 7.5;
+  const acadName = (data.academyName || "ACADEMY").toUpperCase();
+  const acadFontSize = acadName.length > 28 ? 7.8 : 8.8;
   page.drawText(acadName, {
     x: 18,
     y: textY,
     size: acadFontSize,
     font: fontBold,
-    color: navyColor,
+    color: rgb(0.11, 0.21, 0.34),
   });
 
-  textY -= 14;
-  // Weight & Division / Role
-  page.drawText("CATEGORY & DIVISION", {
+  // Line 4: KKWID-{kukkiwonId} • {SubDetails}
+  textY -= 13;
+  const rawKukkiwon = (data.kukkiwonId || "").toUpperCase();
+  const kkwPrefix = rawKukkiwon.startsWith("KKWID-") ? rawKukkiwon : `KKWID-${rawKukkiwon}`;
+
+  let roleOrCategory = "";
+  if (role === "COACH") {
+    roleOrCategory = "Corner Coach";
+  } else if (role === "REFEREE") {
+    roleOrCategory = "Ring Official / Referee";
+  } else if (role === "STAFF") {
+    roleOrCategory = "Organising Committee";
+  } else {
+    roleOrCategory = data.weightCategoryName || "Regular";
+  }
+
+  // Draw Kukkiwon ID
+  page.drawText(kkwPrefix, {
     x: 18,
     y: textY,
-    size: 6.5,
+    size: 7.2,
     font: fontBold,
-    color: goldColor,
-  });
-  textY -= 10;
-  const catText = `${data.weightCategoryName || "Senior"}${data.danOrPoom ? ` • ${data.danOrPoom}` : ""}`;
-  page.drawText(catText, {
-    x: 18,
-    y: textY,
-    size: 7.5,
-    font: fontRegular,
-    color: darkGray,
+    color: rgb(0.05, 0.08, 0.12),
   });
 
-  textY -= 14;
-  // Card & Registration Reference
-  const refText = `REG: ${data.registrationNumber}  |  CARD: ${data.cardNumber}`;
-  page.drawText(refText, {
-    x: 18,
+  const kkwWidth = fontBold.widthOfTextAtSize(kkwPrefix, 7.2);
+  const bulletX = 18 + kkwWidth + 3;
+
+  // Draw gold/orange separator bullet dot •
+  page.drawText("•", {
+    x: bulletX,
     y: textY,
-    size: 6,
+    size: 7.2,
     font: fontBold,
-    color: darkGray,
+    color: rgb(0.92, 0.50, 0.10),
   });
+
+  // If role is Coach/Referee/Staff or category is short: draw next to bullet on same line
+  if (role !== "PARTICIPANT" || roleOrCategory.length <= 22) {
+    page.drawText(roleOrCategory, {
+      x: bulletX + 7,
+      y: textY,
+      size: 7.2,
+      font: fontRegular,
+      color: rgb(0.20, 0.25, 0.32),
+    });
+  } else {
+    // If Participant category is long, wrap to line 5 as in official participant demo
+    textY -= 10;
+    const catFontSize = roleOrCategory.length > 50 ? 5.8 : 6.6;
+    page.drawText(roleOrCategory, {
+      x: 18,
+      y: textY,
+      size: catFontSize,
+      font: fontRegular,
+      color: rgb(0.20, 0.25, 0.32),
+    });
+  }
 }
 
 /**
@@ -585,13 +652,14 @@ export async function generateIndividualCardPdf(
   const doc = await PDFDocument.create();
 
   // If a portrait official template was selected, use portrait dimensions
-  const isPortraitRole = data.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(data.cardRole.toUpperCase());
+  const resolvedRole = (data.cardRole || "PARTICIPANT").toUpperCase();
+  const isPortraitRole = ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(resolvedRole);
   const pageWidth = isPortraitRole ? PORTRAIT_BADGE_WIDTH_PT : CARD_WIDTH_PT;
   const pageHeight = isPortraitRole ? PORTRAIT_BADGE_HEIGHT_PT : CARD_HEIGHT_PT;
 
   const page = doc.addPage([pageWidth, pageHeight]);
 
-  await drawAthleteCard(doc, page, data, mergedConfig);
+  await drawAthleteCard(doc, page, { ...data, cardRole: resolvedRole }, mergedConfig);
 
   const pdfBytes = await doc.save();
   return {
@@ -616,11 +684,12 @@ export async function generateBulkCardsPdf(
   for (let i = 0; i < cardsData.length; i++) {
     const cardData = cardsData[i];
     try {
-      const isPortrait = cardData.cardRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(cardData.cardRole.toUpperCase());
+      const resolvedRole = (cardData.cardRole || "PARTICIPANT").toUpperCase();
+      const isPortrait = ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(resolvedRole);
       const pW = isPortrait ? PORTRAIT_BADGE_WIDTH_PT : CARD_WIDTH_PT;
       const pH = isPortrait ? PORTRAIT_BADGE_HEIGHT_PT : CARD_HEIGHT_PT;
       const page = doc.addPage([pW, pH]);
-      await drawAthleteCard(doc, page, cardData, mergedConfig);
+      await drawAthleteCard(doc, page, { ...cardData, cardRole: resolvedRole }, mergedConfig);
       if (onProgress) {
         onProgress(i + 1, cardsData.length);
       }

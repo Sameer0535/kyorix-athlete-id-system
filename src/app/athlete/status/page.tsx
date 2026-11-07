@@ -151,7 +151,7 @@ function StatusContent() {
       {/* Search Input Box */}
       <form onSubmit={handleSearchSubmit} className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm">
         <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-          Enter Athlete ID or Registration Number
+          Enter Kukkiwon ID or Registration Number
         </label>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
@@ -159,7 +159,7 @@ function StatusContent() {
             required
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="e.g. 05123456 or REG-2026-0001"
+            placeholder="e.g. KKWID-261103-0731-2765 or REG-2026-0001"
             className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-mono text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
           />
           <button
@@ -222,7 +222,7 @@ function StatusContent() {
               </div>
               <h2 className="text-2xl font-bold text-slate-950 mt-1">{data.athlete.fullName}</h2>
               <div className="text-xs text-slate-600 mt-1">
-                Athlete ID: <span className="font-mono font-bold text-slate-900">{data.athlete.kukkiwonId}</span> &bull; {data.athlete.danOrPoom || "Registered"}
+                Kukkiwon ID: <span className="font-mono font-bold text-slate-900">{data.athlete.kukkiwonId}</span>
               </div>
             </div>
 

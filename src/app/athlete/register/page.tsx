@@ -91,7 +91,6 @@ const TEMPLATE_OPTIONS: {
 ];
 
 export default function AthleteRegisterPage() {
-  const [academies, setAcademies] = useState<Academy[]>([]);
   const [weightCategories, setWeightCategories] = useState<WeightCategory[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
 
@@ -102,11 +101,8 @@ export default function AthleteRegisterPage() {
   const [kukkiwonId, setKukkiwonId] = useState("");
   const [fullName, setFullName] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE">("MALE");
-  const [danOrPoom, setDanOrPoom] = useState("1st Dan");
-  const [academyId, setAcademyId] = useState("");
+  const [academyName, setAcademyName] = useState("");
   const [weightCategoryId, setWeightCategoryId] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
 
   // Photo
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -148,19 +144,15 @@ export default function AthleteRegisterPage() {
     }
   }, []);
 
-  // Load academies and weight categories
+  // Load weight categories
   useEffect(() => {
     async function loadOptions() {
       try {
         const res = await fetch("/api/meta/options");
         const data = await res.json();
         if (data.success) {
-          const acads = data.data.academies || [];
           const wcs = data.data.weightCategories || [];
-          setAcademies(acads);
           setWeightCategories(wcs);
-
-          if (acads.length > 0) setAcademyId(acads[0].id);
           const defaultWc = wcs.find((w: WeightCategory) => w.gender === "MALE");
           if (defaultWc) setWeightCategoryId(defaultWc.id);
         }
@@ -184,7 +176,7 @@ export default function AthleteRegisterPage() {
   // Real-time Kukkiwon check
   useEffect(() => {
     const trimmed = kukkiwonId.trim().toUpperCase();
-    if (trimmed.length < 5) {
+    if (trimmed.length < 4) {
       setKukkiwonStatus({ checked: false });
       return;
     }
@@ -216,19 +208,19 @@ export default function AthleteRegisterPage() {
     setError(null);
 
     if (!kukkiwonId.trim()) {
-      setError("Athlete ID is required.");
+      setError("Kukkiwon ID is required.");
       return;
     }
     if (kukkiwonStatus.checked && !kukkiwonStatus.available) {
-      setError("This Athlete ID is already registered in the system.");
+      setError("This Kukkiwon ID is already registered in the system.");
       return;
     }
     if (!fullName.trim()) {
       setError("Athlete full name is required.");
       return;
     }
-    if (!academyId) {
-      setError("Please select an academy.");
+    if (!academyName.trim()) {
+      setError("Please enter your martial arts academy or club name.");
       return;
     }
     if (!weightCategoryId) {
@@ -254,12 +246,9 @@ export default function AthleteRegisterPage() {
       formData.append("kukkiwonId", kukkiwonId.trim().toUpperCase());
       formData.append("fullName", fullName.trim());
       formData.append("gender", gender);
-      formData.append("danOrPoom", danOrPoom);
-      formData.append("academyId", academyId);
+      formData.append("academyName", academyName.trim().toUpperCase());
       formData.append("weightCategoryId", weightCategoryId);
       formData.append("cardRole", cardRole);
-      if (contactPhone) formData.append("contactPhone", contactPhone.trim());
-      if (contactEmail) formData.append("contactEmail", contactEmail.trim());
       formData.append("photo", photoFile);
 
       const res = await fetch("/api/registrations", {
@@ -284,7 +273,6 @@ export default function AthleteRegisterPage() {
     }
   };
 
-  const selectedAcademy = academies.find((a) => a.id === academyId);
   const selectedWeightCategory = weightCategories.find((w) => w.id === weightCategoryId);
   const currentTemplate = TEMPLATE_OPTIONS.find((t) => t.role === cardRole);
 
@@ -359,7 +347,7 @@ export default function AthleteRegisterPage() {
               </span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
-              <span className="text-slate-500 font-medium">Athlete ID</span>
+              <span className="text-slate-500 font-medium">Kukkiwon ID</span>
               <span className="font-mono font-bold text-slate-900">{successResult.kukkiwonId}</span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
@@ -368,7 +356,7 @@ export default function AthleteRegisterPage() {
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
               <span className="text-slate-500 font-medium">Academy</span>
-              <span className="text-slate-800">{successResult.academyName}</span>
+              <span className="text-slate-800 font-semibold">{successResult.academyName}</span>
             </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-200">
               <span className="text-slate-500 font-medium">Category</span>
@@ -461,10 +449,7 @@ export default function AthleteRegisterPage() {
               <h2 className="text-2xl font-bold text-slate-950 pt-1">{fullName}</h2>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                 <span className="font-mono text-xs bg-slate-100 border border-slate-200 text-slate-800 px-2.5 py-1 rounded-md">
-                  ATHLETE ID: {kukkiwonId.toUpperCase()}
-                </span>
-                <span className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-md">
-                  {danOrPoom}
+                  KUKKIWON ID: {kukkiwonId.toUpperCase()}
                 </span>
                 <span className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-md">
                   {gender}
@@ -481,9 +466,14 @@ export default function AthleteRegisterPage() {
             </div>
 
             <div className="flex justify-between py-1 border-b border-slate-200">
-              <span className="text-slate-500">Affiliated Academy</span>
-              <span className="font-semibold text-slate-900">
-                {selectedAcademy?.name} ({selectedAcademy?.city}, {selectedAcademy?.state})
+              <span className="text-slate-500">Kukkiwon ID</span>
+              <span className="font-mono font-bold text-slate-900">{kukkiwonId.toUpperCase()}</span>
+            </div>
+
+            <div className="flex justify-between py-1 border-b border-slate-200">
+              <span className="text-slate-500">Affiliated Academy / Club</span>
+              <span className="font-semibold text-slate-900 uppercase">
+                {academyName}
               </span>
             </div>
 
@@ -492,24 +482,10 @@ export default function AthleteRegisterPage() {
               <span className="font-semibold text-blue-700">{selectedWeightCategory?.name}</span>
             </div>
 
-            <div className="flex justify-between py-1 border-b border-slate-200">
+            <div className="flex justify-between py-1">
               <span className="text-slate-500">Competition Division</span>
               <span className="font-semibold text-slate-800">{selectedWeightCategory?.division}</span>
             </div>
-
-            {contactPhone && (
-              <div className="flex justify-between py-1 border-b border-slate-200">
-                <span className="text-slate-500">Contact Phone</span>
-                <span className="text-slate-800">{contactPhone}</span>
-              </div>
-            )}
-
-            {contactEmail && (
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500">Contact Email</span>
-                <span className="text-slate-800">{contactEmail}</span>
-              </div>
-            )}
           </div>
 
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
@@ -654,7 +630,7 @@ export default function AthleteRegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Athlete ID / License No. <span className="text-red-500">*</span>
+                    Kukkiwon ID <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input
@@ -662,7 +638,7 @@ export default function AthleteRegisterPage() {
                       required
                       value={kukkiwonId}
                       onChange={(e) => setKukkiwonId(e.target.value.toUpperCase())}
-                      placeholder="e.g. 05123456 or ATH-987654"
+                      placeholder="e.g. KKWID-261103-0731-2765 or 05123456"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-mono text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
                     />
                     {checkingKukkiwon && (
@@ -684,43 +660,6 @@ export default function AthleteRegisterPage() {
                       <span>{kukkiwonStatus.message}</span>
                     </div>
                   )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Dan / Poom Rank <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={danOrPoom}
-                    onChange={(e) => setDanOrPoom(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="1st Dan">1st Dan (Black Belt)</option>
-                    <option value="2nd Dan">2nd Dan</option>
-                    <option value="3rd Dan">3rd Dan</option>
-                    <option value="4th Dan">4th Dan (Master)</option>
-                    <option value="5th Dan">5th Dan</option>
-                    <option value="1st Poom">1st Poom (Junior)</option>
-                    <option value="2nd Poom">2nd Poom (Junior)</option>
-                    <option value="3rd Poom">3rd Poom (Junior)</option>
-                    <option value="1st Geup">1st Geup (Color Belt)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Full Name (As on Official Certificate) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Kang Hyun-Woo or John Doe"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
                 </div>
 
                 <div>
@@ -753,6 +692,20 @@ export default function AthleteRegisterPage() {
                   </div>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Full Name (As on Official Certificate) <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Kang Hyun-Woo or Abhishek Kumar"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
             </div>
 
             {/* Section 3: Academy & Category Affiliation */}
@@ -765,20 +718,16 @@ export default function AthleteRegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Martial Arts Academy / Club <span className="text-red-500">*</span>
+                    Martial Arts Academy / Club Name <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
                     required
-                    value={academyId}
-                    onChange={(e) => setAcademyId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    {academies.map((acad) => (
-                      <option key={acad.id} value={acad.id}>
-                        {acad.name} ({acad.city}, {acad.state})
-                      </option>
-                    ))}
-                  </select>
+                    value={academyName}
+                    onChange={(e) => setAcademyName(e.target.value)}
+                    placeholder="e.g. DTTA or TRUEKICK TAEKWONDO ACADEMY"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 uppercase"
+                  />
                 </div>
 
                 <div>
@@ -799,34 +748,6 @@ export default function AthleteRegisterPage() {
                         </option>
                       ))}
                   </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Contact Phone (Optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Contact Email (Optional)
-                  </label>
-                  <input
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="athlete@domain.com"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  />
                 </div>
               </div>
             </div>

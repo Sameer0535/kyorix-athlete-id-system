@@ -48,7 +48,7 @@ export default function AthletePortalHub() {
               </div>
               <h2 className="text-lg font-bold text-slate-900 mb-2">1. New Registration</h2>
               <p className="text-xs text-slate-500 leading-relaxed mb-6">
-                Submit your Athlete ID, full name, academy, registered weight class, select from 4 official card roles, and upload your portrait photo.
+                Submit your Kukkiwon ID, full name, academy, registered weight class, select from 4 official card roles, and upload your portrait photo.
               </p>
             </div>
             <Link

@@ -10,10 +10,11 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
 
-    const kukkiwonIdRaw = formData.get("kukkiwonId") as string;
+    const kukkiwonIdRaw = (formData.get("kukkiwonId") as string) || (formData.get("athleteId") as string);
     const fullName = formData.get("fullName") as string;
     const gender = (formData.get("gender") as string) || "MALE";
-    const academyId = formData.get("academyId") as string;
+    const academyIdRaw = formData.get("academyId") as string | null;
+    const academyNameRaw = formData.get("academyName") as string | null;
     const weightCategoryId = formData.get("weightCategoryId") as string;
     const danOrPoom = (formData.get("danOrPoom") as string) || null;
     const contactPhone = (formData.get("contactPhone") as string) || null;
@@ -25,9 +26,10 @@ export async function POST(req: NextRequest) {
       : "PARTICIPANT";
 
     // 1. Validation
-    if (!kukkiwonIdRaw || !fullName || !academyId || !weightCategoryId) {
+    const trimmedAcademy = academyNameRaw?.trim() || "";
+    if (!kukkiwonIdRaw || !fullName || (!academyIdRaw && !trimmedAcademy) || !weightCategoryId) {
       return apiError(
-        "Kukkiwon ID, full name, academy, and weight category are required fields.",
+        "Kukkiwon ID, full name, academy name, and weight category are required fields.",
         "VALIDATION_ERROR",
         400
       );
@@ -61,11 +63,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Verify Academy and Weight Category exist
-    const [academy, weightCategory] = await Promise.all([
-      prisma.academy.findUnique({ where: { id: academyId } }),
-      prisma.weightCategory.findUnique({ where: { id: weightCategoryId } }),
-    ]);
+    // 3. Resolve Academy and Weight Category
+    let academy = null;
+    if (academyIdRaw) {
+      academy = await prisma.academy.findUnique({ where: { id: academyIdRaw } });
+    }
+    if (!academy && trimmedAcademy) {
+      academy = await prisma.academy.findFirst({
+        where: { name: { equals: trimmedAcademy, mode: "insensitive" } },
+      });
+      if (!academy) {
+        const acadCount = await prisma.academy.count();
+        const code = `ACAD-${String(acadCount + 1).padStart(4, "0")}-${randomBytes(2).toString("hex").toUpperCase()}`;
+        academy = await prisma.academy.create({
+          data: {
+            code,
+            name: trimmedAcademy.toUpperCase(),
+            city: "Affiliated",
+            state: "India",
+          },
+        });
+      }
+    }
+
+    if (!academy) {
+      return apiError("Academy name could not be resolved.", "ACADEMY_NOT_FOUND", 404);
+    }
+
+    const weightCategory = await prisma.weightCategory.findUnique({
+      where: { id: weightCategoryId },
+    });
 
     if (!academy) {
       return apiError("Selected academy not found.", "ACADEMY_NOT_FOUND", 404);

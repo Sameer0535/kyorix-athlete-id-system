@@ -428,7 +428,7 @@ export default function AdminRegistrationsPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by Athlete ID, athlete name, or registration number..."
+              placeholder="Search by Kukkiwon ID, athlete name, or registration number..."
               className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white"
             />
           </div>
@@ -483,7 +483,7 @@ export default function AdminRegistrationsPage() {
               <thead>
                 <tr className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold uppercase tracking-wider text-[11px]">
                   <th className="py-3 px-4">Photo</th>
-                  <th className="py-3 px-4">Athlete ID</th>
+                  <th className="py-3 px-4">Kukkiwon ID</th>
                   <th className="py-3 px-4">Athlete Full Name</th>
                   <th className="py-3 px-4">Card Role</th>
                   <th className="py-3 px-4">Academy Affiliation</th>
@@ -674,7 +674,7 @@ export default function AdminRegistrationsPage() {
             <div className="flex justify-between items-center pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">{photoModalItem.athlete.fullName}</h3>
-                <span className="text-[11px] font-mono text-slate-500">Athlete ID: {photoModalItem.athlete.kukkiwonId}</span>
+                <span className="text-[11px] font-mono text-slate-500">Kukkiwon ID: {photoModalItem.athlete.kukkiwonId}</span>
               </div>
               <button onClick={() => setPhotoModalItem(null)} className="text-slate-400 hover:text-slate-600 text-sm">
                 ✕
@@ -727,7 +727,7 @@ export default function AdminRegistrationsPage() {
 
               <div className="space-y-1.5 text-xs text-slate-700 flex-1">
                 <div className="text-sm font-bold text-slate-900">{viewItem.athlete.fullName}</div>
-                <div>Athlete ID: <span className="font-mono font-bold text-blue-600">{viewItem.athlete.kukkiwonId}</span></div>
+                <div>Kukkiwon ID: <span className="font-mono font-bold text-blue-600">{viewItem.athlete.kukkiwonId}</span></div>
                 <div>Card Role: <span className="font-bold text-slate-800">{viewItem.cardRole || "PARTICIPANT"}</span></div>
                 <div>Rank: <span className="text-slate-700">{viewItem.athlete.danOrPoom || "Registered"}</span></div>
                 <div>Gender: <span className="text-slate-700">{viewItem.athlete.gender}</span></div>
@@ -879,7 +879,7 @@ export default function AdminRegistrationsPage() {
 
             <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Athlete ID (Immutable)</label>
+                <label className="block font-semibold text-slate-700 mb-1">Kukkiwon ID (Immutable)</label>
                 <input
                   type="text"
                   disabled
