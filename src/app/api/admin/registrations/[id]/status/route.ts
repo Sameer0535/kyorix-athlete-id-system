@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { authenticateAdminRequest, logAuditEvent } from "@/lib/security";
 import { apiSuccess, apiError } from "@/lib/api-response";
+import { generateIndividualCardPdf, AthleteCardData } from "@/lib/pdf-generator";
+import { savePrivateFile } from "@/lib/storage";
 
 export async function PATCH(
   req: NextRequest,
@@ -27,6 +30,9 @@ export async function PATCH(
       where: { id: registrationId },
       include: {
         athlete: true,
+        academy: true,
+        weightCategory: true,
+        photograph: true,
         idCard: true,
       },
     });
@@ -38,7 +44,56 @@ export async function PATCH(
     const previousStatus = registration.approvalStatus;
 
     if (action === "APPROVE") {
-      // Approve registration and ensure ID Card record exists
+      // Approve registration and ensure ID Card record exists and is generated
+      const cardCount = await prisma.idCardRecord.count();
+      const cardNumber = registration.idCard?.cardNumber || `KYX-ID-${new Date().getFullYear()}-${String(cardCount + 1).padStart(5, "0")}`;
+
+      let storageKey: string | null = null;
+      let pdfBase64: string | null = null;
+      let fileSizeBytes = 0;
+      let checksumSha256 = "";
+
+      try {
+        const cardData: AthleteCardData = {
+          cardNumber,
+          registrationNumber: registration.registrationNumber,
+          kukkiwonId: registration.athlete.kukkiwonId,
+          fullName: registration.athlete.fullName,
+          gender: registration.athlete.gender,
+          danOrPoom: registration.athlete.danOrPoom,
+          academyName: registration.academy.name,
+          academyCity: registration.academy.city,
+          weightCategoryName: registration.weightCategory.name,
+          division: registration.weightCategory.division,
+          countryCode: registration.countryCode || registration.athlete.countryCode || "IND",
+          countryName: registration.countryName || registration.athlete.countryName || "India",
+          photoStorageKey: registration.photograph.storageKey,
+          photoMimeType: registration.photograph.mimeType,
+          photoBase64: registration.photograph.photoBase64,
+          cardRole: registration.cardRole || "PARTICIPANT",
+          issueDate: new Date(),
+        };
+
+        const { buffer: pdfBuffer } = await generateIndividualCardPdf(cardData);
+        pdfBase64 = pdfBuffer.toString("base64");
+        fileSizeBytes = pdfBuffer.length;
+        checksumSha256 = crypto.createHash("sha256").update(pdfBuffer).digest("hex");
+
+        try {
+          const saveRes = await savePrivateFile({
+            buffer: pdfBuffer,
+            originalFilename: `${cardNumber}.pdf`,
+            subfolder: "cards",
+            allowedMimeTypes: ["application/pdf"],
+          });
+          storageKey = saveRes.storageKey;
+        } catch {
+          storageKey = `cards/${cardNumber}.pdf`;
+        }
+      } catch (genErr) {
+        console.error("Card generation error during approval:", genErr);
+      }
+
       const updated = await prisma.$transaction(async (tx) => {
         const reg = await tx.registration.update({
           where: { id: registrationId },
@@ -56,15 +111,30 @@ export async function PATCH(
           where: { registrationId: registration.id },
         });
 
-        if (!card) {
-          const cardCount = await tx.idCardRecord.count();
-          const cardNumber = `KYX-ID-${new Date().getFullYear()}-${String(cardCount + 1).padStart(5, "0")}`;
+        if (card) {
+          card = await tx.idCardRecord.update({
+            where: { id: card.id },
+            data: {
+              status: "GENERATED",
+              generatedFileKey: storageKey || card.generatedFileKey,
+              generatedFileSizeBytes: fileSizeBytes || card.generatedFileSizeBytes,
+              checksumSha256: checksumSha256 || card.checksumSha256,
+              pdfBase64: pdfBase64 || card.pdfBase64,
+              generatedAt: new Date(),
+              generatedByAdminId: auth.session!.adminId,
+            },
+          });
+        } else {
           card = await tx.idCardRecord.create({
             data: {
               cardNumber,
               registrationId: registration.id,
               athleteId: registration.athleteId,
               status: "GENERATED",
+              generatedFileKey: storageKey,
+              generatedFileSizeBytes: fileSizeBytes || null,
+              checksumSha256: checksumSha256 || null,
+              pdfBase64,
               generatedAt: new Date(),
               generatedByAdminId: auth.session!.adminId,
             },

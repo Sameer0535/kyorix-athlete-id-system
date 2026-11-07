@@ -187,6 +187,7 @@ model AthletePhotograph {
   mimeType        String // image/jpeg, image/png, image/webp
   fileSizeBytes   Int
   checksumSha256  String // Cryptographic SHA-256 integrity digest
+  photoBase64     String? @db.Text // Persistent photo data for multi-container / serverless continuity
   isCurrent       Boolean         @default(true)
   uploadedAt      DateTime        @default(now())
 
@@ -275,6 +276,7 @@ model IdCardRecord {
   generatedFileKey       String?      // Private storage key for generated PDF
   generatedFileSizeBytes Int?
   checksumSha256         String?      // Integrity verification of generated PDF
+  pdfBase64              String? @db.Text // Persistent PDF bytes for reliable downloads across serverless instances
   generatedAt            DateTime?
   generatedByAdminId     String?
   generatedByAdmin       AdminUser?   @relation("GeneratedByAdmin", fields: [generatedByAdminId], references: [id], onDelete: SetNull)

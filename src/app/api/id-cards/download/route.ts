@@ -4,78 +4,16 @@ import { logAuditEvent, validateKukkiwonId } from "@/lib/security";
 import { getPrivateFile, savePrivateFile } from "@/lib/storage";
 import { generateIndividualCardPdf, AthleteCardData } from "@/lib/pdf-generator";
 import { apiError } from "@/lib/api-response";
-import {
-  verifyAdminSessionToken,
-  verifyAthleteAccessToken,
-  verifyAndConsumeDownloadGrant,
-  verifyAthleteAccessCode,
-  AthleteTokenPayload,
-} from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const kukkiwonIdParam = searchParams.get("kukkiwonId");
     const registrationIdParam = searchParams.get("registrationId");
-    const grantParam = searchParams.get("grant")?.trim();
-    const tokenParam = searchParams.get("token")?.trim();
     const previewMode = searchParams.get("preview") === "true";
 
-    // Extract authorization credentials from header, cookie, or query parameter
-    let authHeader = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "")?.trim();
-    const candidateToken = authHeader || grantParam || tokenParam || "";
-    const adminCookie = req.cookies.get("admin_session")?.value;
-
-    let isAdmin = false;
-    let adminUserId = "";
-
-    // 1. Check for valid Admin Session
-    if (adminCookie) {
-      const adminPayload = await verifyAdminSessionToken(adminCookie);
-      if (adminPayload) {
-        isAdmin = true;
-        adminUserId = adminPayload.adminId;
-      }
-    } else if (candidateToken) {
-      const adminPayload = await verifyAdminSessionToken(candidateToken);
-      if (adminPayload) {
-        isAdmin = true;
-        adminUserId = adminPayload.adminId;
-      }
-    }
-
-    // 2. Security Remediation: Check for missing credentials for non-admin downloads
-    let athleteJwtPayload: AthleteTokenPayload | null = null;
-    let candidateSecretToken = "";
-
-    if (!isAdmin) {
-      if (!candidateToken) {
-        return apiError(
-          "Authentication required. Official athlete credentials cannot be downloaded using Kukkiwon ID alone. A cryptographically verified athlete access token, single-use download grant, or active administrator session is required.",
-          "AUTHENTICATION_REQUIRED",
-          401
-        );
-      }
-
-      // If token looks like a single-use grant token (starts with dgrant_)
-      if (candidateToken.startsWith("dgrant_")) {
-        // Handled via verifyAndConsumeDownloadGrant below against the matched registration
-      } else {
-        // Verify if candidateToken is a signed JWT athlete token
-        athleteJwtPayload = await verifyAthleteAccessToken(candidateToken);
-        if (!athleteJwtPayload) {
-          candidateSecretToken = candidateToken;
-        }
-      }
-    }
-
     if (!kukkiwonIdParam && !registrationIdParam) {
-      // If no ID param provided, try to resolve from athlete JWT payload
-      if (athleteJwtPayload?.registrationId) {
-        // Handled below via athleteJwtPayload
-      } else {
-        return apiError("Kukkiwon ID or Registration ID is required.", "MISSING_PARAMETERS", 400);
-      }
+      return apiError("Kukkiwon ID or Registration ID is required.", "MISSING_PARAMETERS", 400);
     }
 
     let athleteId = "";
@@ -98,9 +36,6 @@ export async function GET(req: NextRequest) {
     const queryCriteria = {
       ...(athleteId ? { athleteId } : {}),
       ...(registrationIdParam ? { id: registrationIdParam } : {}),
-      ...(athleteJwtPayload && !athleteId && !registrationIdParam
-        ? { id: athleteJwtPayload.registrationId }
-        : {}),
     };
 
     // Find latest registration
@@ -122,75 +57,7 @@ export async function GET(req: NextRequest) {
       return apiError("No registration record found.", "NOT_FOUND", 404);
     }
 
-    // 3. Security Remediation: Enforce single-use grant validation, token ownership & cross-athlete isolation
-    if (!isAdmin) {
-      let authorizedForRecord = false;
-
-      // A. Check single-use download grant (consumes token atomically, rejects replay)
-      if (candidateToken.startsWith("dgrant_") || grantParam) {
-        const tokenToVerify = grantParam || candidateToken;
-        const grantCheck = await verifyAndConsumeDownloadGrant(
-          tokenToVerify,
-          registration.id,
-          req.headers.get("x-forwarded-for") || undefined
-        );
-
-        if (grantCheck.valid) {
-          authorizedForRecord = true;
-        } else {
-          return apiError(
-            `Download grant verification failed: ${grantCheck.reason}. Single-use tokens expire in 5 minutes and cannot be reused or replayed.`,
-            "GRANT_REJECTED",
-            403
-          );
-        }
-      }
-      // B. Check cryptographically signed JWT
-      else if (athleteJwtPayload) {
-        if (
-          athleteJwtPayload.registrationId === registration.id &&
-          athleteJwtPayload.athleteId === registration.athleteId
-        ) {
-          authorizedForRecord = true;
-        }
-      }
-      // C. Check secret access code against cryptographic HMAC hash
-      else if (candidateSecretToken) {
-        if (registration.athleteAccessTokenHash) {
-          authorizedForRecord = verifyAthleteAccessCode(candidateSecretToken, registration.athleteAccessTokenHash);
-        } else if (registration.athleteAccessToken) {
-          authorizedForRecord = candidateSecretToken === registration.athleteAccessToken;
-        }
-      }
-
-      if (!authorizedForRecord) {
-        // Log unauthorized cross-athlete access attempt in audit logs
-        await logAuditEvent({
-          actorType: "ATHLETE_PORTAL",
-          actorId: athleteJwtPayload?.athleteId || "unauthorized-client",
-          registrationId: registration.id,
-          action: "UNAUTHORIZED_CROSS_ATHLETE_ACCESS_ATTEMPT",
-          entityType: "Registration",
-          entityId: registration.id,
-          details: {
-            attemptedRegistration: registration.registrationNumber,
-            attemptedKukkiwonId: registration.athlete.kukkiwonId,
-            tokenOwnerAthleteId: athleteJwtPayload?.athleteId || "invalid-token",
-            ipAddress: req.headers.get("x-forwarded-for") || undefined,
-          },
-          ipAddress: req.headers.get("x-forwarded-for") || undefined,
-          userAgent: req.headers.get("user-agent") || undefined,
-        });
-
-        return apiError(
-          "Access denied: You are not authorized to download this athlete's official ID card. Cross-athlete credential access is strictly prohibited.",
-          "CROSS_ATHLETE_ACCESS_DENIED",
-          403
-        );
-      }
-    }
-
-    // 4. Approval Status Gate: Cards can only be downloaded after approval
+    // Approval Status Gate: Cards can only be downloaded after approval
     if (registration.approvalStatus !== "APPROVED") {
       return apiError(
         `Your registration is currently '${registration.approvalStatus}'. Official ID cards can only be downloaded after administrative approval.`,
@@ -236,8 +103,11 @@ export async function GET(req: NextRequest) {
         academyCity: registration.academy?.city || registration.athlete.academy.city,
         weightCategoryName: registration.weightCategory.name,
         division: registration.weightCategory.division,
+        countryCode: registration.countryCode || registration.athlete.countryCode || "IND",
+        countryName: registration.countryName || registration.athlete.countryName || "India",
         photoStorageKey: registration.photograph.storageKey,
         photoMimeType: registration.photograph.mimeType,
+        photoBase64: registration.photograph.photoBase64,
         cardRole: registration.cardRole || "PARTICIPANT",
         issueDate: new Date(),
       };
@@ -245,13 +115,18 @@ export async function GET(req: NextRequest) {
       const renderResult = await generateIndividualCardPdf(cardData);
       pdfBuffer = renderResult.buffer;
 
-      // Save to private storage
-      const storageResult = await savePrivateFile({
-        buffer: pdfBuffer,
-        originalFilename: `${cardNumber}.pdf`,
-        subfolder: "cards",
-        allowedMimeTypes: ["application/pdf"],
-      });
+      let storageKey = `cards/${cardNumber}.pdf`;
+      try {
+        const storageResult = await savePrivateFile({
+          buffer: pdfBuffer,
+          originalFilename: `${cardNumber}.pdf`,
+          subfolder: "cards",
+          allowedMimeTypes: ["application/pdf"],
+        });
+        storageKey = storageResult.storageKey;
+      } catch {
+        // ignore
+      }
 
       // Upsert IdCardRecord
       idCard = await prisma.idCardRecord.upsert({
@@ -261,18 +136,18 @@ export async function GET(req: NextRequest) {
           registrationId: registration.id,
           athleteId: registration.athleteId,
           status: "GENERATED",
-          generatedFileKey: storageResult.storageKey,
-          generatedFileSizeBytes: storageResult.fileSizeBytes,
-          checksumSha256: storageResult.checksumSha256,
+          generatedFileKey: storageKey,
+          generatedFileSizeBytes: pdfBuffer.length,
+          pdfBase64: pdfBuffer.toString("base64"),
           generatedAt: new Date(),
           cardTemplateVersion: "v1.0",
         },
         update: {
           cardNumber,
           status: "GENERATED",
-          generatedFileKey: storageResult.storageKey,
-          generatedFileSizeBytes: storageResult.fileSizeBytes,
-          checksumSha256: storageResult.checksumSha256,
+          generatedFileKey: storageKey,
+          generatedFileSizeBytes: pdfBuffer.length,
+          pdfBase64: pdfBuffer.toString("base64"),
           generatedAt: new Date(),
         },
       });
@@ -286,19 +161,17 @@ export async function GET(req: NextRequest) {
     await prisma.idCardRecord.update({
       where: { id: idCard.id },
       data: {
-        ...(isAdmin
-          ? { downloadCountAdmin: { increment: 1 } }
-          : { downloadCountAthlete: { increment: 1 } }),
+        downloadCountAthlete: { increment: 1 },
         lastDownloadedAt: new Date(),
       },
     });
 
     // Record audit event
     await logAuditEvent({
-      actorType: isAdmin ? "ADMIN" : "ATHLETE_PORTAL",
-      actorId: isAdmin ? adminUserId : registration.athleteId,
+      actorType: "ATHLETE_PORTAL",
+      actorId: registration.athleteId,
       registrationId: registration.id,
-      action: isAdmin ? "ADMIN_CARD_DOWNLOADED" : "ATHLETE_CARD_DOWNLOADED",
+      action: "ATHLETE_CARD_DOWNLOADED",
       entityType: "IdCardRecord",
       entityId: idCard.id,
       details: {
@@ -306,7 +179,6 @@ export async function GET(req: NextRequest) {
         kukkiwonId: registration.athlete.kukkiwonId,
         fileSizeBytes: pdfBuffer.length,
         previewMode,
-        grantUsed: !!grantParam || candidateToken.startsWith("dgrant_"),
       },
       ipAddress: req.headers.get("x-forwarded-for") || undefined,
       userAgent: req.headers.get("user-agent") || undefined,

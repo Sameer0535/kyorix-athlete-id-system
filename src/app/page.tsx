@@ -115,7 +115,7 @@ export default function HomePage() {
             </div>
             <h3 className="font-bold text-slate-900 text-lg mb-2">Instant Self-Service Access</h3>
             <p className="text-slate-600 text-sm leading-relaxed">
-              Approved participants can access their status anytime using their secure access code and download high-resolution PDF credentials.
+              Approved participants can check their status anytime and download their high-resolution official ID card.
             </p>
           </div>
         </div>

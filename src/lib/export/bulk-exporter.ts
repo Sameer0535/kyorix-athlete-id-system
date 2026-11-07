@@ -148,6 +148,7 @@ export async function executeBulkExport(
         countryName: (reg as any).countryName || (athlete as any).countryName || "India",
         photoStorageKey: photo.storageKey,
         photoMimeType: photo.mimeType,
+        photoBase64: photo.photoBase64,
         cardRole: reg.cardRole || "PARTICIPANT",
         issueDate: new Date(),
       };
@@ -186,6 +187,7 @@ export async function executeBulkExport(
               generatedFileKey: storageResult.storageKey,
               generatedFileSizeBytes: storageResult.fileSizeBytes,
               checksumSha256: storageResult.checksumSha256,
+              pdfBase64: singlePdfBuffer.toString("base64"),
               generatedAt: new Date(),
               cardTemplateVersion: "v1.0",
             },
@@ -196,6 +198,7 @@ export async function executeBulkExport(
               generatedFileKey: storageResult.storageKey,
               generatedFileSizeBytes: storageResult.fileSizeBytes,
               checksumSha256: storageResult.checksumSha256,
+              pdfBase64: singlePdfBuffer.toString("base64"),
               generatedAt: new Date(),
             },
           });

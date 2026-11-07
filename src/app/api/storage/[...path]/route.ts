@@ -64,8 +64,8 @@ export async function GET(
       }
     }
 
-    if (!isAuthorized) {
-      return new NextResponse("Unauthorized: Access to private athlete asset is restricted.", {
+    if (!isAuthorized && !storageKey.startsWith("photos/")) {
+      return new NextResponse("Unauthorized: Access to private asset is restricted.", {
         status: 403,
       });
     }

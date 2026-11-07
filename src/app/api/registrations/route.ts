@@ -139,6 +139,7 @@ export async function POST(req: NextRequest) {
           mimeType: storageResult.mimeType,
           fileSizeBytes: storageResult.fileSizeBytes,
           checksumSha256: storageResult.checksumSha256,
+          photoBase64: photoBuffer.toString("base64"),
           isCurrent: true,
         },
       });

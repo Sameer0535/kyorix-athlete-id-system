@@ -12,41 +12,46 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.trim() || "";
     const academyId = searchParams.get("academyId") || "";
     const weightCategoryId = searchParams.get("weightCategoryId") || "";
-    const statusParam = searchParams.get("status") || "ALL"; // ALL | GENERATED | PENDING_GENERATION
+    const statusParam = searchParams.get("cardStatus") || searchParams.get("status") || "ALL"; // ALL | GENERATED | PENDING_GENERATION
 
-    // Only approved registrations can have ID cards
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {
-      approvalStatus: "APPROVED",
-    };
+    const andConditions: any[] = [{ approvalStatus: "APPROVED" }];
 
-    if (academyId) where.academyId = academyId;
-    if (weightCategoryId) where.weightCategoryId = weightCategoryId;
+    if (academyId) andConditions.push({ academyId });
+    if (weightCategoryId) andConditions.push({ weightCategoryId });
 
     if (search) {
-      where.OR = [
-        { registrationNumber: { contains: search, mode: "insensitive" } },
-        { athlete: { kukkiwonId: { contains: search, mode: "insensitive" } } },
-        { athlete: { fullName: { contains: search, mode: "insensitive" } } },
-        { idCard: { cardNumber: { contains: search, mode: "insensitive" } } },
-      ];
+      andConditions.push({
+        OR: [
+          { registrationNumber: { contains: search, mode: "insensitive" } },
+          { athlete: { kukkiwonId: { contains: search, mode: "insensitive" } } },
+          { athlete: { fullName: { contains: search, mode: "insensitive" } } },
+          { idCard: { cardNumber: { contains: search, mode: "insensitive" } } },
+        ],
+      });
     }
 
     if (statusParam === "GENERATED") {
-      where.idCard = { status: "GENERATED", generatedFileKey: { not: null } };
+      andConditions.push({ idCard: { status: "GENERATED" } });
     } else if (statusParam === "PENDING_GENERATION") {
-      where.OR = [
-        { idCard: null },
-        { idCard: { status: "PENDING_GENERATION" } },
-        { idCard: { generatedFileKey: null } },
-      ];
+      andConditions.push({
+        OR: [
+          { idCard: null },
+          { idCard: { status: "PENDING_GENERATION" } },
+          { idCard: { generatedFileKey: null } },
+        ],
+      });
     }
+
+    const where = { AND: andConditions };
 
     const [
       registrations,
       totalApproved,
       cardsGenerated,
       recentBatches,
+      academies,
+      weightCategories,
     ] = await Promise.all([
       prisma.registration.findMany({
         where,
@@ -68,7 +73,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
       prisma.registration.count({ where: { approvalStatus: "APPROVED" } }),
-      prisma.idCardRecord.count({ where: { status: "GENERATED", generatedFileKey: { not: null } } }),
+      prisma.idCardRecord.count({ where: { status: "GENERATED" } }),
       prisma.cardGenerationBatch.findMany({
         orderBy: { startedAt: "desc" },
         take: 5,
@@ -78,6 +83,8 @@ export async function GET(req: NextRequest) {
           },
         },
       }),
+      prisma.academy.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      prisma.weightCategory.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     ]);
 
     const pendingGeneration = Math.max(0, totalApproved - cardsGenerated);
@@ -91,6 +98,8 @@ export async function GET(req: NextRequest) {
         failedGenerations: 0,
       },
       recentBatches,
+      academies,
+      weightCategories,
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error fetching ID cards";

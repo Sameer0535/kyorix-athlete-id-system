@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
       countryName: registration.countryName || registration.athlete.countryName || "India",
       photoStorageKey: registration.photograph.storageKey,
       photoMimeType: registration.photograph.mimeType,
+      photoBase64: registration.photograph.photoBase64,
       cardRole: registration.cardRole || "PARTICIPANT",
       issueDate: new Date(),
     };

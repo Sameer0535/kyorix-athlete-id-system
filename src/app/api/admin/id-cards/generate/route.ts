@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       countryName: registration.countryName || registration.athlete.countryName || "India",
       photoStorageKey: registration.photograph.storageKey,
       photoMimeType: registration.photograph.mimeType,
+      photoBase64: registration.photograph.photoBase64,
       cardRole: registration.cardRole || "PARTICIPANT",
       issueDate: new Date(),
     };
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
             generatedFileKey: storageResult.storageKey,
             generatedFileSizeBytes: storageResult.fileSizeBytes,
             checksumSha256: storageResult.checksumSha256,
+            pdfBase64: pdfBuffer.toString("base64"),
             generatedAt: new Date(),
             generatedByAdminId: auth.session!.adminId,
             cardTemplateVersion: "v1.0",
@@ -111,6 +113,7 @@ export async function POST(req: NextRequest) {
             generatedFileKey: storageResult.storageKey,
             generatedFileSizeBytes: storageResult.fileSizeBytes,
             checksumSha256: storageResult.checksumSha256,
+            pdfBase64: pdfBuffer.toString("base64"),
             generatedAt: new Date(),
             generatedByAdminId: auth.session!.adminId,
             cardTemplateVersion: "v1.0",

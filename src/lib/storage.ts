@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { prisma } from "./prisma";
 
 export interface SaveFileOptions {
   buffer: Buffer;
@@ -161,12 +162,47 @@ export async function getPrivateFile(storageKey: string): Promise<{ buffer: Buff
     throw new Error("Security violation: unauthorized file path requested.");
   }
 
-  if (!fs.existsSync(absoluteFilePath)) {
-    throw new Error(`File not found in private storage: ${storageKey}`);
+  if (fs.existsSync(absoluteFilePath)) {
+    const buffer = await fs.promises.readFile(absoluteFilePath);
+    return { buffer, absolutePath: absoluteFilePath };
   }
 
-  const buffer = await fs.promises.readFile(absoluteFilePath);
-  return { buffer, absolutePath: absoluteFilePath };
+  // Fallback to PostgreSQL persistent storage (essential for Vercel multi-container / serverless continuity)
+  try {
+    const photo = await prisma.athletePhotograph.findFirst({
+      where: { storageKey },
+      select: { photoBase64: true },
+    });
+
+    if (photo?.photoBase64) {
+      const buffer = Buffer.from(photo.photoBase64, "base64");
+      const parentDir = path.dirname(absoluteFilePath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      await fs.promises.writeFile(absoluteFilePath, buffer).catch(() => {});
+      return { buffer, absolutePath: absoluteFilePath };
+    }
+
+    const card = await prisma.idCardRecord.findFirst({
+      where: { generatedFileKey: storageKey },
+      select: { pdfBase64: true },
+    });
+
+    if (card?.pdfBase64) {
+      const buffer = Buffer.from(card.pdfBase64, "base64");
+      const parentDir = path.dirname(absoluteFilePath);
+      if (!fs.existsSync(parentDir)) {
+        fs.mkdirSync(parentDir, { recursive: true });
+      }
+      await fs.promises.writeFile(absoluteFilePath, buffer).catch(() => {});
+      return { buffer, absolutePath: absoluteFilePath };
+    }
+  } catch {
+    // ignore db fallback errors and proceed to throw
+  }
+
+  throw new Error(`File not found in private storage: ${storageKey}`);
 }
 
 /**

@@ -4,6 +4,29 @@ import path from "path";
 import { getPrivateFile } from "./storage";
 import { drawVectorCountryFlag } from "./countries";
 
+/**
+ * Loads authentic official national flag PNG image buffer
+ */
+export function getCountryFlagBuffer(countryCode?: string | null): Buffer | null {
+  const code = (countryCode || "IND").trim().toUpperCase();
+  const candidates = [
+    path.resolve(process.cwd(), "src", "assets", "flags", `${code}.png`),
+    path.resolve(process.cwd(), "public", "flags", `${code}.png`),
+    path.resolve("/tmp", "flags", `${code}.png`),
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).size > 100) {
+        return fs.readFileSync(candidate);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
+}
+
 export interface AthleteCardData {
   cardNumber: string;
   registrationNumber: string;
@@ -19,6 +42,8 @@ export interface AthleteCardData {
   countryName?: string | null;
   photoStorageKey: string;
   photoMimeType?: string;
+  photoBase64?: string | null;
+  photoBuffer?: Buffer | null;
   cardRole?: "PARTICIPANT" | "REFEREE" | "COACH" | "STAFF" | string;
   issueDate?: Date;
 }
@@ -453,9 +478,25 @@ export async function drawPortraitTemplateCard(
   const photoW = cardWidth * coords.wRatio;
   const photoH = cardHeight * coords.hRatio;
 
-  if (data.photoStorageKey) {
+  let photoBuffer: Buffer | null = data.photoBuffer || null;
+  if (!photoBuffer && data.photoBase64) {
     try {
-      const { buffer: photoBuffer } = await getPrivateFile(data.photoStorageKey);
+      photoBuffer = Buffer.from(data.photoBase64, "base64");
+    } catch {
+      // ignore
+    }
+  }
+  if (!photoBuffer && data.photoStorageKey) {
+    try {
+      const res = await getPrivateFile(data.photoStorageKey);
+      photoBuffer = res.buffer;
+    } catch {
+      // ignore
+    }
+  }
+
+  if (photoBuffer) {
+    try {
       let embeddedPhoto: any = null;
       if (
         (data.photoMimeType && data.photoMimeType.includes("png")) ||
@@ -493,6 +534,14 @@ export async function drawPortraitTemplateCard(
         color: rgb(0.95, 0.95, 0.95),
       });
     }
+  } else {
+    page.drawRectangle({
+      x: photoX,
+      y: photoY,
+      width: photoW,
+      height: photoH,
+      color: rgb(0.96, 0.96, 0.97),
+    });
   }
 
   // 3. Load Fonts
@@ -503,7 +552,7 @@ export async function drawPortraitTemplateCard(
   // Left side starts at x = 18 pt
   let textY = cardHeight * 0.49;
 
-  // Line 1: Country Code + Vector Flag
+  // Line 1: Country Code + Authentic Official National Flag
   const country = (data.countryCode || "IND").toUpperCase();
   page.drawText(country, {
     x: 18,
@@ -513,8 +562,34 @@ export async function drawPortraitTemplateCard(
     color: rgb(0.08, 0.12, 0.18),
   });
   const countryTextWidth = fontBold.widthOfTextAtSize(country, 8.5);
-  const flagX = 18 + countryTextWidth + 4;
-  drawVectorCountryFlag(page, country, flagX, textY - 1, 14, 9.5);
+  const flagX = 18 + countryTextWidth + 4.5;
+  const flagW = 14;
+  const flagH = 9.33;
+
+  const flagBuffer = getCountryFlagBuffer(country);
+  if (flagBuffer) {
+    try {
+      const flagImg = await doc.embedPng(flagBuffer);
+      page.drawImage(flagImg, {
+        x: flagX,
+        y: textY - 1,
+        width: flagW,
+        height: flagH,
+      });
+      page.drawRectangle({
+        x: flagX,
+        y: textY - 1,
+        width: flagW,
+        height: flagH,
+        borderColor: rgb(0.80, 0.82, 0.85),
+        borderWidth: 0.4,
+      });
+    } catch {
+      drawVectorCountryFlag(page, country, flagX, textY - 1, flagW, flagH);
+    }
+  } else {
+    drawVectorCountryFlag(page, country, flagX, textY - 1, flagW, flagH);
+  }
 
   // Line 2: Full Name (Bold Uppercase Black)
   textY -= 15;
