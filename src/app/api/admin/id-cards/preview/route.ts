@@ -38,24 +38,7 @@ export async function GET(req: NextRequest) {
       return apiError("Registration not found.", "NOT_FOUND", 404);
     }
 
-    // If PDF already rendered, stream it inline
-    if (registration.idCard?.generatedFileKey) {
-      try {
-        const { buffer } = await getPrivateFile(registration.idCard.generatedFileKey);
-        return new NextResponse(buffer as unknown as BodyInit, {
-          status: 200,
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": "inline; filename=\"preview.pdf\"",
-            "Cache-Control": "private, no-cache, no-store",
-          },
-        });
-      } catch {
-        // Fallback to dynamic generation if file missing
-      }
-    }
-
-    // Dynamic on-the-fly rendering for preview
+    // Always generate on-the-fly for real-time accurate preview matching latest layout rules
     const cardNumber = registration.idCard?.cardNumber || `KYX-ID-PREVIEW`;
     const cardData: AthleteCardData = {
       cardNumber,

@@ -19,6 +19,7 @@ import {
   Ban,
   RotateCcw,
   Activity,
+  ExternalLink,
 } from "lucide-react";
 
 interface CardRegistrationItem {
@@ -988,31 +989,80 @@ export default function AdminIdCardsPage() {
           </div>
         )}
 
-        {/* Inline PDF Preview Modal */}
+        {/* Inline PDF Preview Modal - Large & Full Featured */}
         {previewUrl && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-4 space-y-3 shadow-2xl">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+            <div className="bg-white border border-slate-200 rounded-2xl max-w-5xl w-full h-[90vh] flex flex-col p-4 sm:p-5 shadow-2xl">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Printer className="w-4 h-4 text-blue-600" />
-                  Print Preview &bull; {previewTitle}
+                  Official Credential Preview &bull; <span className="text-blue-700">{previewTitle}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition"
+                    title="Open full page in new tab"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Open Tab
+                  </a>
+                  <a
+                    href={previewUrl}
+                    download="athlete-id-card.pdf"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition"
+                    title="Download card PDF"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download
+                  </a>
+                  <button
+                    onClick={() => setPreviewUrl(null)}
+                    className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 text-lg font-bold transition ml-1"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Large high-res viewer container */}
+              <div className="flex-1 w-full min-h-0 my-3 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-inner flex items-center justify-center">
+                <object
+                  data={previewUrl}
+                  type="application/pdf"
+                  className="w-full h-full rounded-xl border-0"
+                >
+                  <iframe
+                    src={previewUrl}
+                    title="Official Card PDF"
+                    className="w-full h-full rounded-xl border-0"
+                  >
+                    <div className="p-8 text-center space-y-3">
+                      <p className="text-xs text-slate-600 font-medium">
+                        Unable to render PDF preview directly inside your browser window.
+                      </p>
+                      <a
+                        href={previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl"
+                      >
+                        <ExternalLink className="w-4 h-4" /> Open PDF in New Window
+                      </a>
+                    </div>
+                  </iframe>
+                </object>
+              </div>
+
+              <div className="flex justify-between items-center pt-2 border-t border-slate-100 shrink-0">
+                <div className="text-[11px] text-slate-500">
+                  CR80 Official Championship Badge Format (1:1.4 aspect ratio)
                 </div>
                 <button
                   onClick={() => setPreviewUrl(null)}
-                  className="text-slate-400 hover:text-slate-600 text-base font-bold"
-                >
-                  &times;
-                </button>
-              </div>
-
-              <div className="w-full h-80 rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
-                <iframe src={previewUrl} title="Card Preview" className="w-full h-full border-0" />
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  onClick={() => setPreviewUrl(null)}
-                  className="px-4 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold"
+                  className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
                 >
                   Close Preview
                 </button>

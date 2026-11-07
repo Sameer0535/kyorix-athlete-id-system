@@ -43,7 +43,9 @@ export async function GET(req: NextRequest) {
     let pdfBuffer: Buffer | null = null;
     let finalCardNumber = card?.cardNumber || "";
 
-    if (card?.generatedFileKey) {
+    const forceFresh = searchParams.get("fresh") === "true";
+
+    if (!forceFresh && card?.generatedFileKey) {
       try {
         const fileRes = await getPrivateFile(card.generatedFileKey);
         pdfBuffer = fileRes.buffer;

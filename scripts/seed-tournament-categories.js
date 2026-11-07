@@ -115,7 +115,7 @@ const categories = [
 
   // Senior Freshers (17+ Years)
   // Male: -54, -58, -63, -68, -74, -80, -87, +87
-  ...["-54kg (Fin)", "-58kg (Fly)", "-63kg (Bantam)", "-68kg (Feather)", "-74kg (Light)", "-80kg (Welter)", "-87kg (Middle)", "+87kg (Heavy)"].map((wt, idx) => ({
+  ...["-54kg", "-58kg", "-63kg", "-68kg", "-74kg", "-80kg", "-87kg", "+87kg"].map((wt, idx) => ({
     code: `KY_FR_SR_M_W${idx + 1}`,
     division: "SENIOR",
     gender: "MALE",
@@ -124,7 +124,7 @@ const categories = [
     maxWeightKg: 54 + idx * 5,
   })),
   // Female: -46, -49, -53, -57, -62, -67, -73, +73
-  ...["-46kg (Fin)", "-49kg (Fly)", "-53kg (Bantam)", "-57kg (Feather)", "-62kg (Light)", "-67kg (Welter)", "-73kg (Middle)", "+73kg (Heavy)"].map((wt, idx) => ({
+  ...["-46kg", "-49kg", "-53kg", "-57kg", "-62kg", "-67kg", "-73kg", "+73kg"].map((wt, idx) => ({
     code: `KY_FR_SR_F_W${idx + 1}`,
     division: "SENIOR",
     gender: "FEMALE",
@@ -157,7 +157,7 @@ const categories = [
   ]),
 
   // Cadet Regular (Ages 12-14)
-  ...["-33kg (Fin)", "-37kg (Fly)", "-41kg (Bantam)", "-45kg (Feather)", "-49kg (Light)", "-53kg (Welter)", "-57kg (Light Middle)", "-61kg (Middle)", "-65kg (Light Heavy)", "+65kg (Heavyweight)"].map((wt, idx) => ({
+  ...["-33kg", "-37kg", "-41kg", "-45kg", "-49kg", "-53kg", "-57kg", "-61kg", "-65kg", "+65kg"].map((wt, idx) => ({
     code: `KY_REG_CAD_M_W${idx + 1}`,
     division: "CADET",
     gender: "MALE",
@@ -165,7 +165,7 @@ const categories = [
     minWeightKg: null,
     maxWeightKg: 33 + idx * 4,
   })),
-  ...["-29kg (Fin)", "-33kg (Fly)", "-37kg (Bantam)", "-41kg (Feather)", "-44kg (Light)", "-47kg (Welter)", "-51kg (Light Middle)", "-55kg (Middle)", "-59kg (Light Heavy)", "+59kg (Heavyweight)"].map((wt, idx) => ({
+  ...["-29kg", "-33kg", "-37kg", "-41kg", "-44kg", "-47kg", "-51kg", "-55kg", "-59kg", "+59kg"].map((wt, idx) => ({
     code: `KY_REG_CAD_F_W${idx + 1}`,
     division: "CADET",
     gender: "FEMALE",
@@ -175,7 +175,7 @@ const categories = [
   })),
 
   // Junior Regular (Ages 15-17)
-  ...["-45kg (Fin)", "-48kg (Fly)", "-51kg (Bantam)", "-55kg (Feather)", "-59kg (Light)", "-63kg (Welter)", "-68kg (Light Middle)", "-73kg (Middle)", "-78kg (Light Heavy)", "+78kg (Heavy)"].map((wt, idx) => ({
+  ...["-45kg", "-48kg", "-51kg", "-55kg", "-59kg", "-63kg", "-68kg", "-73kg", "-78kg", "+78kg"].map((wt, idx) => ({
     code: `KY_REG_JR_M_W${idx + 1}`,
     division: "JUNIOR",
     gender: "MALE",
@@ -183,7 +183,7 @@ const categories = [
     minWeightKg: null,
     maxWeightKg: 45 + idx * 4,
   })),
-  ...["-42kg (Fin)", "-44kg (Fly)", "-46kg (Bantam)", "-49kg (Feather)", "-52kg (Light)", "-55kg (Welter)", "-59kg (Light Middle)", "-63kg (Middle)", "-68kg (Light Heavy)", "+68kg (Heavy)"].map((wt, idx) => ({
+  ...["-42kg", "-44kg", "-46kg", "-49kg", "-52kg", "-55kg", "-59kg", "-63kg", "-68kg", "+68kg"].map((wt, idx) => ({
     code: `KY_REG_JR_F_W${idx + 1}`,
     division: "JUNIOR",
     gender: "FEMALE",
@@ -193,7 +193,7 @@ const categories = [
   })),
 
   // Senior Regular (17+ Years)
-  ...["-54kg (Fin)", "-58kg (Fly)", "-63kg (Bantam)", "-68kg (Feather)", "-74kg (Light)", "-80kg (Welter)", "-87kg (Middle)", "+87kg (Heavy)"].map((wt, idx) => ({
+  ...["-54kg", "-58kg", "-63kg", "-68kg", "-74kg", "-80kg", "-87kg", "+87kg"].map((wt, idx) => ({
     code: `KY_REG_SR_M_W${idx + 1}`,
     division: "SENIOR",
     gender: "MALE",
@@ -201,7 +201,7 @@ const categories = [
     minWeightKg: null,
     maxWeightKg: 54 + idx * 5,
   })),
-  ...["-46kg (Fin)", "-49kg (Fly)", "-53kg (Bantam)", "-57kg (Feather)", "-62kg (Light)", "-67kg (Welter)", "-73kg (Middle)", "+73kg (Heavy)"].map((wt, idx) => ({
+  ...["-46kg", "-49kg", "-53kg", "-57kg", "-62kg", "-67kg", "-73kg", "+73kg"].map((wt, idx) => ({
     code: `KY_REG_SR_F_W${idx + 1}`,
     division: "SENIOR",
     gender: "FEMALE",
@@ -394,3 +394,4 @@ seed()
     console.error("Seeding error:", err);
     process.exit(1);
   });
+

@@ -551,7 +551,7 @@ export async function drawPortraitTemplateCard(
 
   // 4. Render Details Block strictly aligned to the official format
   // Left side starts at x = 18 pt
-  let textY = cardHeight * 0.49;
+  let textY = cardHeight * 0.465;
 
   // Line 1: Country Code + Authentic Official National Flag
   const country = (data.countryCode || "IND").toUpperCase();
@@ -621,6 +621,10 @@ export async function drawPortraitTemplateCard(
   const rawKukkiwon = (data.kukkiwonId || "").toUpperCase();
   const kkwPrefix = rawKukkiwon.startsWith("KKWID-") ? rawKukkiwon : `KKWID-${rawKukkiwon}`;
 
+  const cleanCat = (data.weightCategoryName || "Regular")
+    .replace(/\s*\((Fin|Fly|Bantam|Feather|Light|Welter|Middle|Heavy|Heavyweight|Light Middle|Light Heavy)\)/gi, "")
+    .trim();
+
   let roleOrCategory = "";
   if (role === "COACH") {
     roleOrCategory = data.notes?.trim() || "Corner Coach";
@@ -629,10 +633,10 @@ export async function drawPortraitTemplateCard(
   } else if (role === "STAFF") {
     roleOrCategory = data.notes?.trim() || "Organising Committee";
   } else {
-    if (data.notes?.trim() && !data.notes.includes(data.weightCategoryName)) {
-      roleOrCategory = `${data.weightCategoryName} • ${data.notes.trim()}`;
+    if (data.notes?.trim() && !data.notes.includes(cleanCat)) {
+      roleOrCategory = `${cleanCat} • ${data.notes.trim()}`;
     } else {
-      roleOrCategory = data.weightCategoryName || "Regular";
+      roleOrCategory = cleanCat;
     }
   }
 
