@@ -1,6 +1,8 @@
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import process from "node:process";
+import { Buffer } from "node:buffer";
 import { prisma } from "./prisma";
 
 export interface SaveFileOptions {

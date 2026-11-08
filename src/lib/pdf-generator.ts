@@ -1,6 +1,8 @@
 import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import fs from "fs";
 import path from "path";
+import process from "node:process";
+import { Buffer } from "node:buffer";
 import { getPrivateFile } from "./storage";
 import { drawVectorCountryFlag } from "./countries";
 
