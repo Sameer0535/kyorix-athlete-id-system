@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import AdminNav from "@/components/AdminNav";
 import {
   Users,
@@ -15,6 +16,7 @@ import {
   Eye,
   X,
   RefreshCw,
+  UserPlus,
 } from "lucide-react";
 import PhotoCropper from "@/components/PhotoCropper";
 
@@ -328,13 +330,23 @@ export default function AdminRegistrationsPage() {
             </p>
           </div>
 
-          <button
-            onClick={() => fetchRegistrations()}
-            className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:border-blue-300 transition shadow-sm"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
-            Refresh Queue
-          </button>
+          <div className="flex items-center gap-2.5">
+            <Link
+              href="/athlete/register?from=admin"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Add New Player</span>
+            </Link>
+
+            <button
+              onClick={() => fetchRegistrations()}
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:text-blue-600 hover:border-blue-300 transition shadow-sm"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-600" : ""}`} />
+              Refresh Queue
+            </button>
+          </div>
         </div>
 
         {actionSuccessMsg && (

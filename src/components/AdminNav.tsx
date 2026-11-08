@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Users, Building, Scale, LayoutDashboard, CreditCard, LogOut, ExternalLink } from "lucide-react";
+import { Users, Building, Scale, LayoutDashboard, CreditCard, LogOut, ExternalLink, UserPlus } from "lucide-react";
 
 export default function AdminNav() {
   const pathname = usePathname();
@@ -71,6 +71,14 @@ export default function AdminNav() {
 
           {/* Right actions */}
           <div className="flex items-center gap-3">
+            <Link
+              href="/athlete/register?from=admin"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm shadow-blue-500/20"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>+ Add Player</span>
+            </Link>
+
             <Link
               href="/"
               target="_blank"

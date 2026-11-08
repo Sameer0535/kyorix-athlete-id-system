@@ -245,13 +245,18 @@ export default function AthleteRegisterPage() {
     notes?: string;
   } | null>(null);
 
-  // Read role from URL query param if present
+  const [fromAdmin, setFromAdmin] = useState(false);
+
+  // Read role and from URL query param if present
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const urlRole = params.get("role")?.toUpperCase();
       if (urlRole && ["PARTICIPANT", "REFEREE", "COACH", "STAFF"].includes(urlRole)) {
         setCardRole(urlRole as CardRoleType);
+      }
+      if (params.get("from") === "admin") {
+        setFromAdmin(true);
       }
     }
   }, []);
@@ -736,20 +741,57 @@ export default function AthleteRegisterPage() {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 pt-2">
-            <Link
-              href={`/athlete/status?query=${encodeURIComponent(successResult.kukkiwonId)}`}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition shadow-md shadow-blue-500/20"
-            >
-              Track Registration Status &rarr;
-            </Link>
-            <Link
-              href="/"
-              className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl text-xs transition border border-slate-300"
-            >
-              Return to Home
-            </Link>
-          </div>
+          {fromAdmin ? (
+            <div className="space-y-2.5 pt-2">
+              <Link
+                href="/admin/registrations"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs transition shadow-md shadow-blue-500/20 flex items-center justify-center gap-2"
+              >
+                <span>Return to Admin Registrations & Approve &rarr;</span>
+              </Link>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCurrentStep(1);
+                    setSuccessResult(null);
+                    setFullName("");
+                    setKukkiwonId("");
+                    setContactPhone("");
+                    setContactEmail("");
+                    setPhotoFile(null);
+                    setPhotoPreview(null);
+                    setSecondaryEvent("");
+                  }}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-2.5 px-4 rounded-xl text-xs transition border border-slate-200"
+                >
+                  + Register Another Player
+                </button>
+                <Link
+                  href={`/athlete/status?query=${encodeURIComponent(successResult.kukkiwonId)}`}
+                  className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl text-xs transition border border-slate-300 flex items-center justify-center"
+                >
+                  View Status Receipt
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <Link
+                href={`/athlete/status?query=${encodeURIComponent(successResult.kukkiwonId)}`}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl text-xs transition shadow-md shadow-blue-500/20"
+              >
+                Track Registration Status &rarr;
+              </Link>
+              <Link
+                href="/"
+                className="flex-1 bg-white hover:bg-slate-50 text-slate-700 font-semibold py-3 px-4 rounded-xl text-xs transition border border-slate-300"
+              >
+                Return to Home
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -993,7 +1035,7 @@ export default function AthleteRegisterPage() {
     <div className="min-h-screen bg-slate-50 text-slate-900 py-8 px-4 sm:px-8">
       <div className="max-w-3xl mx-auto">
         <header className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200">
-          <Link href="/" className="inline-flex items-center gap-3">
+          <Link href={fromAdmin ? "/admin/registrations" : "/"} className="inline-flex items-center gap-3">
             <Image
               src="/images/kyorix-logo.png"
               alt="Kyorix Sport Technology"
@@ -1004,10 +1046,10 @@ export default function AthleteRegisterPage() {
             />
           </Link>
           <Link
-            href="/"
+            href={fromAdmin ? "/admin/registrations" : "/"}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 transition"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
+            <ArrowLeft className="w-3.5 h-3.5" /> {fromAdmin ? "Back to Admin Registrations" : "Back to Home"}
           </Link>
         </header>
 
