@@ -129,3 +129,97 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/admin/registrations/[id]
+ * Permanently delete a registration, its ID card, photograph, and free up the athlete record
+ */
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await authenticateAdminRequest(req, "registrations:edit");
+    if (auth.errorResponse || !auth.session) return auth.errorResponse!;
+
+    const { id } = await params;
+
+    const registration = await prisma.registration.findUnique({
+      where: { id },
+      include: {
+        athlete: true,
+        photograph: true,
+        idCard: true,
+      },
+    });
+
+    if (!registration) {
+      return apiError("Registration not found.", "NOT_FOUND", 404);
+    }
+
+    const athleteId = registration.athleteId;
+    const athleteName = registration.athlete.fullName;
+    const kukkiwonId = registration.athlete.kukkiwonId;
+    const photographId = registration.photographId;
+
+    // Execute atomic deletion
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated ID card record if any
+      await tx.idCardRecord.deleteMany({
+        where: { registrationId: id },
+      });
+
+      // 2. Delete the registration
+      await tx.registration.delete({
+        where: { id },
+      });
+
+      // 3. Delete the photograph record
+      if (photographId) {
+        await tx.athletePhotograph.deleteMany({
+          where: { id: photographId },
+        });
+      }
+
+      // 4. Check if athlete has any other registrations
+      const remainingRegs = await tx.registration.count({
+        where: { athleteId },
+      });
+
+      if (remainingRegs === 0) {
+        // Delete any remaining photographs of this athlete
+        await tx.athletePhotograph.deleteMany({
+          where: { athleteId },
+        });
+        // Delete the athlete record to free up the Kukkiwon ID
+        await tx.athlete.delete({
+          where: { id: athleteId },
+        });
+      }
+    });
+
+    // Audit log
+    await logAuditEvent({
+      actorType: "ADMIN",
+      actorId: auth.session.adminId,
+      adminUserId: auth.session.adminId,
+      action: "REGISTRATION_DELETED",
+      entityType: "Registration",
+      entityId: id,
+      details: {
+        athleteName,
+        kukkiwonId,
+        registrationNumber: registration.registrationNumber,
+      },
+    });
+
+    return apiSuccess({
+      deleted: true,
+      message: `Athlete ${athleteName} (${kukkiwonId}) successfully deleted.`,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to delete athlete";
+    return apiError(message, "DELETE_ERROR", 500);
+  }
+}
+
+

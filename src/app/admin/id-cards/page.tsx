@@ -21,6 +21,7 @@ import {
   Activity,
   ExternalLink,
   Loader2,
+  Trash2,
 } from "lucide-react";
 
 interface CardRegistrationItem {
@@ -137,6 +138,9 @@ export default function AdminIdCardsPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState("");
+
+  // Delete Athlete Modal
+  const [deleteModalItem, setDeleteModalItem] = useState<CardRegistrationItem | null>(null);
 
   // Inspect Failed Records Modal
   const [inspectBatchId, setInspectBatchId] = useState<string | null>(null);
@@ -437,6 +441,28 @@ export default function AdminIdCardsPage() {
     setPreviewUrl(null);
     setPreviewError(null);
     setPreviewLoading(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalItem) return;
+    setActionInProgress(true);
+    try {
+      const res = await fetch(`/api/admin/registrations/${deleteModalItem.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error?.message || "Failed to delete athlete.");
+      }
+
+      setSuccessMsg(`Athlete ${deleteModalItem.athlete.fullName} (${deleteModalItem.athlete.kukkiwonId}) successfully deleted.`);
+      setDeleteModalItem(null);
+      fetchData();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Deletion failed.");
+    } finally {
+      setActionInProgress(false);
+    }
   };
 
   return (
@@ -774,6 +800,15 @@ export default function AdminIdCardsPage() {
                                 <Download className="w-3.5 h-3.5 text-blue-600" />
                                 PDF
                               </a>
+
+                              <button
+                                onClick={() => setDeleteModalItem(item)}
+                                disabled={actionInProgress}
+                                title="Delete Athlete Record"
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition border border-transparent hover:border-red-200"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             </td>
                           </tr>
                         );
@@ -1142,6 +1177,62 @@ export default function AdminIdCardsPage() {
                   className="px-5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition"
                 >
                   Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DELETE CONFIRMATION MODAL */}
+        {deleteModalItem && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white border border-red-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center gap-3 text-red-600 border-b border-slate-100 pb-3">
+                <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Delete Athlete Record</h3>
+                  <p className="text-xs text-slate-500">Permanent administrative action</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Are you sure you want to permanently delete athlete{" "}
+                <strong className="text-slate-900">{deleteModalItem.athlete.fullName}</strong>{" "}
+                (Kukkiwon ID: <span className="font-mono font-bold text-blue-600">{deleteModalItem.athlete.kukkiwonId}</span>)?
+              </p>
+
+              <div className="p-3 bg-red-50/70 border border-red-200 rounded-xl text-xs text-red-800 space-y-1">
+                <div className="font-bold flex items-center gap-1.5 text-red-700">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  This will permanently delete:
+                </div>
+                <ul className="list-disc list-inside text-[11px] text-red-600 pl-1 space-y-0.5">
+                  <li>Tournament registration ({deleteModalItem.registrationNumber})</li>
+                  <li>Accredited ID card and generated PDF</li>
+                  <li>Biometric portrait photograph</li>
+                  <li>Frees Kukkiwon ID to allow re-registration if needed</li>
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalItem(null)}
+                  disabled={actionInProgress}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={actionInProgress}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-sm shadow-red-500/20 disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {actionInProgress ? "Deleting..." : "Permanently Delete Athlete"}
                 </button>
               </div>
             </div>

@@ -32,3 +32,4 @@ Write-Host " Shortcut Location: $ShortcutPath" -ForegroundColor Yellow
 Write-Host " Icon: $IconPath" -ForegroundColor Yellow
 Write-Host " Launches Directly into: https://kyorix-idcard.vercel.app/admin" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
+

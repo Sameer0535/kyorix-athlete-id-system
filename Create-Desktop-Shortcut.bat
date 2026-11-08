@@ -5,3 +5,4 @@ powershell -ExecutionPolicy Bypass -File "scripts\create-desktop-shortcut.ps1"
 echo.
 echo You can now close this window and find the "Kyorix Athlete ID System" icon on your Desktop!
 pause
+
