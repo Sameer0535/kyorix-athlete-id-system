@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AdminHotkey from "@/components/AdminHotkey";
 
 export const metadata: Metadata = {
   title: "Kyorix Athlete ID Card Generation System",
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <AdminHotkey />
         {children}
       </body>
     </html>
