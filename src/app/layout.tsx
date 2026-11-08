@@ -5,6 +5,12 @@ import AdminHotkey from "@/components/AdminHotkey";
 export const metadata: Metadata = {
   title: "Kyorix Athlete ID Card Generation System",
   description: "Centralized Athlete ID Card Platform - Kyorix Sports Technology",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/app-icon.png",
+  },
 };
 
 export default function RootLayout({
